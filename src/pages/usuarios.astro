@@ -1,0 +1,286 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+
+const API_BASE = import.meta.env.PUBLIC_API_URL || 'https://api.raddix.pro/v2';
+
+interface Usuario {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
+let usuarios: Usuario[] = [];
+let errorMsg = '';
+
+try {
+  const res = await fetch(`${API_BASE}/api/auth/usuarios`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  usuarios = await res.json();
+} catch (err) {
+  errorMsg = 'No se pudieron cargar los usuarios. Verifica la conexión con el servidor.';
+}
+
+const doctores = usuarios.filter(u => u.role === 'Doctor');
+const pacientes = usuarios.filter(u => u.role === 'Paciente');
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Usuarios | RADIX</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --radix-600: #6b32e8;
+      --radix-500: #7c50f5;
+      --radix-400: #9878fa;
+      --radix-100: #ece6ff;
+      --bg: #07050f;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+      --text: #f1f0f5;
+      --muted: rgba(255,255,255,0.38);
+    }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Layout */
+    .page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    /* Header */
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; }
+    .header-left { display: flex; align-items: center; gap: 1rem; }
+    .logo-badge {
+      display: flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 10px;
+      background: rgba(107,50,232,0.2);
+      box-shadow: 0 0 0 1px rgba(124,80,245,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+    .logo-badge svg { width: 20px; height: 20px; stroke: #9878fa; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+    .page-title { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; }
+    .page-subtitle { font-size: 0.8rem; color: var(--muted); margin-top: 1px; font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.8rem; font-weight: 500;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--muted); text-decoration: none;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    .back-btn:hover { color: var(--text); border-color: rgba(124,80,245,0.4); background: rgba(124,80,245,0.08); }
+    .back-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Stats */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2.5rem; }
+    .stat-card {
+      padding: 1.2rem 1.4rem; border-radius: 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .stat-value { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; color: #fff; }
+    .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'IBM Plex Mono', monospace; }
+    .stat-card.doctors .stat-value { color: #9878fa; }
+    .stat-card.patients .stat-value { color: #34d399; }
+
+    /* Sections */
+    .sections { display: grid; gap: 2rem; }
+    .section-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .section-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; font-family: 'IBM Plex Mono', monospace;
+    }
+    .badge-doctor { background: rgba(152,120,250,0.12); border: 1px solid rgba(152,120,250,0.25); color: #9878fa; }
+    .badge-patient { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); color: #34d399; }
+    .section-count { font-size: 0.75rem; color: var(--muted); }
+
+    /* Table */
+    .table-wrapper {
+      border-radius: 14px; overflow: hidden;
+      background: var(--surface); border: 1px solid var(--border);
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: rgba(255,255,255,0.03); }
+    th {
+      padding: 0.75rem 1.2rem; text-align: left; font-size: 0.7rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace; border-bottom: 1px solid var(--border);
+    }
+    td { padding: 0.9rem 1.2rem; font-size: 0.875rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.025); }
+    .user-name { font-weight: 600; color: #fff; }
+    .user-email { color: var(--muted); font-size: 0.8rem; font-family: 'IBM Plex Mono', monospace; }
+    .user-id { color: var(--muted); font-size: 0.75rem; font-family: 'IBM Plex Mono', monospace; }
+    .user-date { color: var(--muted); font-size: 0.75rem; }
+    .role-pill {
+      display: inline-flex; align-items: center; padding: 0.2rem 0.6rem;
+      border-radius: 999px; font-size: 0.7rem; font-weight: 600;
+      font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .role-doctor { background: rgba(152,120,250,0.12); border: 1px solid rgba(152,120,250,0.2); color: #9878fa; }
+    .role-patient { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2); color: #34d399; }
+
+    /* Empty state */
+    .empty {
+      padding: 3rem; text-align: center; color: var(--muted); font-size: 0.875rem;
+    }
+
+    /* Error */
+    .error-banner {
+      padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;
+      background: rgba(240,62,62,0.08); border: 1px solid rgba(240,62,62,0.2);
+      color: #f87171; font-size: 0.875rem;
+    }
+
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: 1fr; }
+      .back-btn span { display: none; }
+      th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <div class="logo-badge">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="3"/>
+            <line x1="12" y1="2" x2="12" y2="6"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
+            <line x1="2" y1="12" x2="6" y2="12"/>
+            <line x1="18" y1="12" x2="22" y2="12"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="page-title">Usuarios</h1>
+          <p class="page-subtitle">Gestión de accesos · Radix</p>
+        </div>
+      </div>
+      <a href="/dashboard" class="back-btn">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        <span>Volver al dashboard</span>
+      </a>
+    </div>
+
+    {errorMsg && (
+      <div class="error-banner">⚠ {errorMsg}</div>
+    )}
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value">{usuarios.length}</div>
+        <div class="stat-label">Total usuarios</div>
+      </div>
+      <div class="stat-card doctors">
+        <div class="stat-value">{doctores.length}</div>
+        <div class="stat-label">Doctores</div>
+      </div>
+      <div class="stat-card patients">
+        <div class="stat-value">{pacientes.length}</div>
+        <div class="stat-label">Pacientes</div>
+      </div>
+    </div>
+
+    <!-- Sections -->
+    <div class="sections">
+
+      <!-- Doctores -->
+      <div>
+        <div class="section-header">
+          <span class="section-badge badge-doctor">
+            <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
+            Doctores
+          </span>
+          <span class="section-count">{doctores.length} registros</span>
+        </div>
+        <div class="table-wrapper">
+          {doctores.length === 0 ? (
+            <div class="empty">No hay doctores registrados</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Nombre</th>
+                  <th>Email</th>
+                  <th>Fecha registro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {doctores.map(u => (
+                  <tr>
+                    <td class="user-id">#{u.id}</td>
+                    <td>
+                      <div class="user-name">{u.firstName} {u.lastName}</div>
+                    </td>
+                    <td class="user-email">{u.email}</td>
+                    <td class="user-date">{u.createdAt ? u.createdAt.substring(0, 10) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      <!-- Pacientes -->
+      <div>
+        <div class="section-header">
+          <span class="section-badge badge-patient">
+            <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
+            Pacientes
+          </span>
+          <span class="section-count">{pacientes.length} registros</span>
+        </div>
+        <div class="table-wrapper">
+          {pacientes.length === 0 ? (
+            <div class="empty">No hay pacientes registrados</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Nombre</th>
+                  <th>Email</th>
+                  <th>Fecha registro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pacientes.map(u => (
+                  <tr>
+                    <td class="user-id">#{u.id}</td>
+                    <td>
+                      <div class="user-name">{u.firstName} {u.lastName}</div>
+                    </td>
+                    <td class="user-email">{u.email}</td>
+                    <td class="user-date">{u.createdAt ? u.createdAt.substring(0, 10) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
