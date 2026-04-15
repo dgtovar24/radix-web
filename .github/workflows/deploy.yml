@@ -1,0 +1,35 @@
+name: Deploy to Self-Hosted Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: docker build -t radix-web .
+
+      - name: Stop Old Container
+        run: docker stop radix-web-app || true
+
+      - name: Remove Old Container
+        run: docker rm radix-web-app || true
+
+      - name: Run New Container
+        run: |
+          docker run -d \
+            --name radix-web-app \
+            --restart unless-stopped \
+            --network dokploy-network \
+            --label "traefik.enable=true" \
+            --label "traefik.http.routers.radix-web.rule=Host(\`aiflex.dev\`, \`www.aiflex.dev\`)" \
+            --label "traefik.http.routers.radix-web.entrypoints=web,websecure" \
+            --label "traefik.http.services.radix-web.loadbalancer.server.port=4321" \
+            radix-web
