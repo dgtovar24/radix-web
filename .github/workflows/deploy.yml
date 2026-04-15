@@ -31,5 +31,7 @@ jobs:
             --label "traefik.enable=true" \
             --label "traefik.http.routers.radix-web.rule=Host(\`aiflex.dev\`, \`www.aiflex.dev\`)" \
             --label "traefik.http.routers.radix-web.entrypoints=web,websecure" \
+            --label "traefik.http.routers.radix-web.tls=true" \
+            --label "traefik.http.routers.radix-web.tls.certresolver=letsencrypt" \
             --label "traefik.http.services.radix-web.loadbalancer.server.port=4321" \
             radix-web
