@@ -1,8 +1,24 @@
 ---
 import AuthLayout from '../layouts/AuthLayout.astro';
 import RegisterForm from '../components/auth/RegisterForm';
+
+const userCookie = Astro.cookies.get('radix-user')?.value;
+let userRole = null;
+let token = null;
+
+if (userCookie) {
+  try {
+    const user = JSON.parse(decodeURIComponent(userCookie));
+    userRole = user.role;
+    token = user.token || user.id;
+  } catch {}
+}
+
+if (!userRole) {
+  return Astro.redirect('/login');
+}
 ---
 
-<AuthLayout pageTitle="Crear Cuenta">
-  <RegisterForm client:load />
+<AuthLayout pageTitle={userRole === 'Admin' ? 'Registrar Médico' : 'Registrar Paciente'}>
+  <RegisterForm client:load creatorRole={userRole} creatorToken={token} />
 </AuthLayout>

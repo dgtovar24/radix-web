@@ -143,7 +143,7 @@ export default function LoginForm() {
         <div className="mt-8 flex flex-col items-center gap-4">
           <div className="h-px w-12 bg-white/5"></div>
           <p className="text-sm text-white/20">
-            ¿Sin acceso? <a href="/register" className="font-bold text-radix-400 hover:text-radix-300 hover:underline">Solicite su cuenta</a>
+            ¿Sin acceso? Contacte a su administrador departamental
           </p>
         </div>
       </form>

@@ -2,37 +2,74 @@ import type { APIRoute } from 'astro';
 
 const API_BASE = import.meta.env.PUBLIC_API_URL || 'https://api.raddix.pro/v2';
 
-export const POST: APIRoute = async ({ request }) => {
-  const formData = await request.formData();
-  const firstName = formData.get('firstName') as string;
-  const lastName = formData.get('lastName') as string;
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
+export const POST: APIRoute = async ({ request, cookies }) => {
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return new Response(JSON.stringify({ error: 'Body must be JSON' }), { status: 400 });
+  }
+
+  const { firstName, lastName, email, password, phone, address, role } = body;
 
   if (!firstName || !lastName || !email || !password) {
-    return new Response(JSON.stringify({ error: 'Todos los campos son obligatorios' }), {
+    return new Response(JSON.stringify({ error: 'Campos principales son obligatorios' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
+  const userCookie = cookies.get('radix-user')?.value;
+  if (!userCookie) {
+    return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 401 });
+  }
+
+  let callerToken = '';
+  let callerRole = '';
   try {
-    const res = await fetch(`${API_BASE}/api/auth/register`, {
+    const user = JSON.parse(decodeURIComponent(userCookie));
+    callerRole = user.role;
+    callerToken = user.token || user.id;
+  } catch {}
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (callerToken) {
+    headers['Authorization'] = `Bearer ${callerToken}`;
+  }
+
+  let endpoint = `${API_BASE}/api/auth/register/patient`;
+  let backendPayload: any = {};
+
+  if (callerRole === 'Admin') {
+    endpoint = `${API_BASE}/api/auth/register/doctor`;
+    backendPayload = { firstName, lastName, email, password };
+  } else if (callerRole === 'Doctor') {
+    endpoint = `${API_BASE}/api/auth/register/patient`;
+    backendPayload = { firstName, lastName, email, password, phone, address };
+  } else {
+    return new Response(JSON.stringify({ error: 'Rol no autorizado para registrar' }), { status: 403 });
+  }
+
+  try {
+    const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre: firstName, apellido: lastName, email, password, role: 'Doctor' }),
+      headers,
+      body: JSON.stringify(backendPayload),
     });
 
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      return new Response(JSON.stringify({ error: data.error || 'Error al crear usuario' }), {
+      return new Response(JSON.stringify({ error: data.error || data.message || 'Error al crear usuario' }), {
         status: res.status,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    return new Response(JSON.stringify({ success: true, message: 'Usuario creado' }), {
+    return new Response(JSON.stringify({ success: true, message: 'Usuario creado', data }), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },
     });

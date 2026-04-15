@@ -1,0 +1,100 @@
+{
+  "api": "Radix API v1",
+  "endpoints": [
+    {
+      "path": "/api/auth/login",
+      "description": "Login user to get session ID/Token",
+      "response": {
+        "role": "string",
+        "firstName": "string",
+        "id": "integer",
+        "token": "integer (ID as token)"
+      },
+      "method": "POST",
+      "request_body": {
+        "password": "string (required)",
+        "email": "string (required)"
+      }
+    },
+    {
+      "path": "/api/auth/register/doctor",
+      "request_body": {
+        "password": "string (required)",
+        "email": "string (required)",
+        "firstName": "string (required)",
+        "lastName": "string (required)"
+      },
+      "response": {
+        "message": "string",
+        "id": "integer"
+      },
+      "headers": "Authorization: Bearer \u003CADMIN_ID\u003E",
+      "method": "POST",
+      "description": "ADMIN ONLY: Register a new doctor"
+    },
+    {
+      "path": "/api/auth/register/patient",
+      "request_body": {
+        "phone": "string (optional)",
+        "lastName": "string (required)",
+        "password": "string (required)",
+        "firstName": "string (required)",
+        "address": "string (optional)",
+        "email": "string (required)"
+      },
+      "response": {
+        "message": "string",
+        "id": "integer"
+      },
+      "headers": "Authorization: Bearer \u003CDOCTOR_ID\u003E",
+      "method": "POST",
+      "description": "DOCTOR ONLY: Register a new patient"
+    },
+    {
+      "path": "/api/patients",
+      "description": "Get all active patients",
+      "response": [
+        {
+          "id": "integer",
+          "fullName": "string"
+        }
+      ],
+      "method": "GET"
+    },
+    {
+      "path": "/api/patients/{id}",
+      "description": "Get specific patient by internal ID",
+      "response": {
+        "id": "integer",
+        "fullName": "string"
+      },
+      "method": "GET"
+    },
+    {
+      "path": "/api/patients/profile/{userId}",
+      "description": "Get specific patient by their User ID",
+      "response": {
+        "id": "integer",
+        "fullName": "string"
+      },
+      "method": "GET"
+    },
+    {
+      "path": "/api/patients/register",
+      "description": "Legacy/alternative patient registration",
+      "response": {
+        "message": "string",
+        "userId": "integer"
+      },
+      "method": "POST",
+      "request_body": {
+        "password": "string (required)",
+        "firstName": "string (required)",
+        "lastName": "string (required)",
+        "doctorId": "string (optional)",
+        "email": "string (required)"
+      }
+    }
+  ],
+  "description": "Complete API Schema with expected POST bodies and GET responses"
+}

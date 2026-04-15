@@ -186,6 +186,19 @@ const initial = userText.charAt(0).toUpperCase();
           <div class="card-arrow">Crear cuenta →</div>
         </a>
       )}
+      
+      {userRole === 'Doctor' && (
+        <a href="/register" class="card">
+          <div class="card-icon icon-green">
+            <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          </div>
+          <div>
+            <div class="card-title">Registrar Paciente</div>
+            <div class="card-desc">Añadir un nuevo paciente a la plataforma RADIX.</div>
+          </div>
+          <div class="card-arrow">Crear perfil →</div>
+        </a>
+      )}
 
       <a href="/login" class="card">
         <div class="card-icon icon-blue">
