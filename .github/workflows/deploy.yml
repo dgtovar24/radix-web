@@ -42,9 +42,9 @@ jobs:
           for i in $(seq 1 20); do
             STATUS=$(docker inspect -f '{{.State.Status}}' radix-web-app 2>/dev/null || echo "missing")
             if [ "$STATUS" = "running" ]; then
-              HTTP_CODE=$(docker exec radix-web-app curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/ 2>/dev/null || echo "000")
-              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
-                echo "radix-web is healthy (HTTP $HTTP_CODE)"
+              HTTP_CODE=$(docker exec radix-web-app node -e "require('http').get('http://localhost:4321/',r=>{process.exit(r.statusCode===200||r.statusCode===301||r.statusCode===302?0:1)}).on('error',()=>process.exit(2))" 2>/dev/null && echo "200" || echo "000")
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "radix-web is healthy (HTTP OK)"
                 exit 0
               fi
             fi
@@ -52,5 +52,5 @@ jobs:
             sleep 3
           done
           echo "Health check failed. Container logs:"
-          docker logs --tail 50 radix-web-app
+          docker logs --tail 50 radix-web-app || true
           exit 1
