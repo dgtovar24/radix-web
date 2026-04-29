@@ -1,0 +1,83 @@
+---
+import { ViewTransitions } from "astro:transitions";
+import ThemeProvider from '../components/ThemeProvider';
+import { useTheme } from '../components/ThemeProvider';
+import '../styles/global.css';
+
+const userCookie = Astro.cookies.get('radix-user')?.value;
+let userName = 'User';
+let userRole = 'Doctor';
+
+if (userCookie) {
+  try {
+    const user = JSON.parse(decodeURIComponent(userCookie));
+    userName = user.firstName || user.email || 'User';
+    userRole = user.role || 'Doctor';
+  } catch (e) {
+    console.error('Failed to parse user cookie');
+  }
+}
+---
+
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Debug Theme | RADIX</title>
+  <ViewTransitions />
+</head>
+<body class="font-dm-sans antialiased">
+  <ThemeProvider client:load>
+    <div id="debug-content" class="p-10">
+      <h1 class="text-3xl font-bold mb-4">Debug Theme</h1>
+      <p class="mb-4">Current Palette Name: <span id="palette-name">Loading...</span></p>
+      <button id="switch-btn" class="px-6 py-3 bg-blue-500 text-white rounded-xl font-bold">Switch to Ocean Calm</button>
+    </div>
+
+    <script is:inline>
+      // Wait for React to hydrate
+      setTimeout(() => {
+        const nameEl = document.getElementById('palette-name');
+        const btn = document.getElementById('switch-btn');
+
+        // Try to find the palette name from the DOM or localStorage
+        const saved = localStorage.getItem('radix-palette');
+        if (saved) {
+          const p = JSON.parse(saved);
+          if (nameEl) nameEl.innerText = p.name;
+        }
+
+        if (btn) {
+          btn.onclick = () => {
+            const oceanCalm = {
+              name: 'Ocean Calm',
+              colors: {
+                primary: '#0ea5e9',
+                primaryLight: '#38bdf8',
+                secondary: '#0284c7',
+                background: '#f0f9ff',
+                surface: '#e0f2fe',
+                text: '#0f172a',
+                textSecondary: '#475569',
+                accent: '#1e293b',
+                success: '#10b981',
+                warning: '#f59e0b',
+                error: '#dc2626',
+                border: '#bae6fd'
+              }
+            };
+            localStorage.setItem('radix-palette', JSON.stringify(oceanCalm));
+            const c = oceanCalm.colors;
+            document.documentElement.style.setProperty('--p', c.primary);
+            document.documentElement.style.setProperty('--b', c.background);
+            if (nameEl) nameEl.innerText = 'Ocean Calm (Applied!)';
+            document.body.style.backgroundColor = c.background;
+            alert('Should have switched to Ocean Calm!');
+          };
+        }
+      }, 2000);
+    </script>
+  </ThemeProvider>
+</body>
+</html>

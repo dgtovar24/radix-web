@@ -1,156 +1,305 @@
-import { useState, type FormEvent } from 'react';
+'use client';
+
+import { useState } from 'react';
+import { Activity, Lock, User, Shield, AlertCircle } from 'lucide-react';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('email', email);
-      formData.append('password', password);
-
-      const response = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
-        body: formData,
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
+      const data = await res.json();
 
-      const result = await response.json();
+      if (!res.ok) throw new Error(data.error || 'Credenciales inválidas');
 
-      if (!response.ok || result.error) {
-        setError(result.error || 'Credenciales inválidas');
-        return;
-      }
-
+      const userData = data.user || data;
+      document.cookie = `radix-user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=28800`;
       window.location.href = '/dashboard';
-    } catch {
-      setError('Error de conexión con el servidor móvil');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error de conexión');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="glass-dark relative overflow-hidden rounded-[2.5rem] p-10 backdrop-blur-3xl shadow-2xl border border-white/10">
-      {/* Top glowing accent */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-radix-400/50 to-transparent"></div>
-      
-      {/* Branding for mobile */}
-      <div className="mb-10 text-center lg:hidden">
-        <div className="mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-radix-500/10 p-3 shadow-glow ring-1 ring-radix-500/20">
-          <svg className="h-8 w-8 text-radix-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="3" />
-            <line x1="12" y1="2" x2="12" y2="6" />
-            <line x1="12" y1="18" x2="12" y2="22" />
-            <line x1="2" y1="12" x2="6" y2="12" />
-            <line x1="18" y1="12" x2="22" y2="12" />
-          </svg>
+    <div style={{
+      background: '#ffffff',
+      borderRadius: 24,
+      padding: '40px 40px 36px',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)',
+      maxWidth: 400,
+      width: '100%',
+      boxSizing: 'border-box',
+      animation: 'fadeUp 0.4s ease-out both',
+    }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: 32 }}>
+        <div style={{
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          margin: '0 auto 16px',
+          background: '#3b82f6',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          boxShadow: '0 4px 12px rgba(59,130,246,0.35)',
+        }}>
+          <Activity size={22} strokeWidth={2.5} />
         </div>
-        <h2 className="font-display text-3xl font-bold tracking-tight text-white">RADIX</h2>
+        <h2 style={{
+          fontSize: 22,
+          fontWeight: 700,
+          color: '#111827',
+          margin: '0 0 6px',
+          fontFamily: "'Inter', sans-serif",
+          letterSpacing: '-0.02em',
+        }}>
+          Iniciar Sesión
+        </h2>
+        <p style={{
+          fontSize: 13,
+          color: '#6b7280',
+          margin: 0,
+          fontFamily: "'Inter', sans-serif",
+        }}>
+          Accede a tu panel de control
+        </p>
       </div>
 
-      <div className="mb-10">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-white/90">Acceso Profesional</h2>
-        <p className="mt-2 text-sm text-white/40 font-medium">Ingrese sus credenciales seguras para continuar</p>
-      </div>
-
+      {/* Error Alert */}
       {error && (
-        <div className="animate-fade-in mb-8 flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3.5 text-sm text-red-200 backdrop-blur-md">
-          <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <p>{error}</p>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 14px',
+          background: '#fef2f2',
+          border: '1px solid #fecaca',
+          borderRadius: 12,
+          color: '#dc2626',
+          fontSize: 13,
+          fontWeight: 500,
+          marginBottom: 20,
+          fontFamily: "'Inter', sans-serif",
+        }}>
+          <AlertCircle size={15} strokeWidth={2.5} />
+          {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2 text-left">
-          <label htmlFor="email" className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">
-            Identificador o Correo
+      {/* Form */}
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#374151',
+            marginBottom: 6,
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            Correo electrónico
           </label>
-          <div className="relative group">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 transition-colors group-focus-within:text-radix-400">
-              <svg className="h-5 w-5 text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 16v-4" /><path d="M12 8h.01" />
-              </svg>
-            </div>
+          <div style={{ position: 'relative' }}>
+            <User size={14} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
             <input
-              id="email"
               type="text"
-              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Ej. Badix o adm@radix.pro"
-              className="w-full rounded-2xl border border-white/5 bg-white/[0.03] pl-12 py-4 text-sm text-white placeholder-white/10 outline-none transition-all focus:border-radix-500/40 focus:bg-white/[0.05] focus:ring-4 focus:ring-radix-500/10"
+              placeholder="tu@email.com"
+              required
+              style={{
+                width: '100%',
+                padding: '12px 14px 12px 40px',
+                fontSize: 13,
+                color: '#111827',
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: 12,
+                outline: 'none',
+                fontFamily: "'Inter', sans-serif",
+                boxSizing: 'border-box',
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
+              onFocus={(e) => {
+                e.target.style.background = '#ffffff';
+                e.target.style.borderColor = '#3b82f6';
+                e.target.style.boxShadow = '0 0 0 3px #dbeafe';
+              }}
+              onBlur={(e) => {
+                e.target.style.background = '#f9fafb';
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
         </div>
 
-        <div className="space-y-2 text-left">
-          <label htmlFor="password" className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">
-            Código de Seguridad
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#374151',
+            marginBottom: 6,
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            Contraseña
           </label>
-          <div className="relative group">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 transition-colors group-focus-within:text-radix-400">
-              <svg className="h-5 w-5 text-white/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            </div>
+          <div style={{ position: 'relative' }}>
+            <Lock size={14} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
             <input
-              id="password"
-              type="password"
-              required
+              type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-2xl border border-white/5 bg-white/[0.03] pl-12 py-4 text-sm text-white placeholder-white/10 outline-none transition-all focus:border-radix-500/40 focus:bg-white/[0.05] focus:ring-4 focus:ring-radix-500/10"
+              required
+              style={{
+                width: '100%',
+                padding: '12px 44px 12px 40px',
+                fontSize: 13,
+                color: '#111827',
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: 12,
+                outline: 'none',
+                fontFamily: "'Inter', sans-serif",
+                boxSizing: 'border-box',
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
+              onFocus={(e) => {
+                e.target.style.background = '#ffffff';
+                e.target.style.borderColor = '#3b82f6';
+                e.target.style.boxShadow = '0 0 0 3px #dbeafe';
+              }}
+              onBlur={(e) => {
+                e.target.style.background = '#f9fafb';
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.boxShadow = 'none';
+              }}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: 14,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#9ca3af',
+                padding: 2,
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              {showPassword ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              )}
+            </button>
           </div>
         </div>
 
-        <div className="pt-4">
-          <button
-            type="submit"
-            disabled={loading}
-            className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-br from-radix-500 to-radix-700 py-4 font-bold text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-radix-500/25 active:scale-[0.98] disabled:opacity-50"
-          >
-            <div className="relative z-10 flex items-center justify-center gap-3">
-              {loading ? (
-                <>
-                  <svg className="h-5 w-5 animate-spin text-white" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                  <span>Autenticando...</span>
-                </>
-              ) : (
-                <>
-                  <span>Iniciar Sistema</span>
-                  <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </>
-              )}
-            </div>
-            <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100"></div>
-          </button>
-        </div>
-
-        <div className="mt-8 flex flex-col items-center gap-4">
-          <div className="h-px w-12 bg-white/5"></div>
-          <p className="text-sm text-white/20">
-            ¿Sin acceso? Contacte a su administrador departamental
-          </p>
-        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            width: '100%',
+            padding: '13px',
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#ffffff',
+            background: '#3b82f6',
+            border: 'none',
+            borderRadius: 12,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontFamily: "'Inter', sans-serif",
+            transition: 'background 0.15s, transform 0.15s',
+            marginTop: 4,
+          }}
+          onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = '#2563eb'; }}
+          onMouseLeave={(e) => { if (!loading) e.currentTarget.style.background = '#3b82f6'; }}
+        >
+          {loading ? (
+            <>
+              <span style={{
+                width: 16,
+                height: 16,
+                border: '2px solid rgba(255,255,255,0.35)',
+                borderTopColor: 'white',
+                borderRadius: '50%',
+                animation: 'spin 0.7s linear infinite',
+                display: 'inline-block',
+              }} />
+              <span>Verificando...</span>
+            </>
+          ) : (
+            'Iniciar Sesión'
+          )}
+        </button>
       </form>
-      
-      <div className="mt-12 text-center">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-white/10">v1.2 // Secure Health Infrastructure</p>
+
+      {/* Footer Badge */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        marginTop: 24,
+        paddingTop: 20,
+        borderTop: '1px solid #f3f4f6',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981' }}>
+          <Shield size={14} strokeWidth={2} />
+          <span style={{
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            Conexión Segura
+          </span>
+        </div>
       </div>
+
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

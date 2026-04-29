@@ -1,33 +1,28 @@
 ---
 import { ViewTransitions } from "astro:transitions";
-import ThemeProvider from '../components/ThemeProvider';
-import DashboardLayout from '../components/DashboardLayout';
-import DashboardStats from '../components/DashboardStats';
-import '../styles/global.css';
+import ThemeProvider from '../../components/ThemeProvider';
+import DashboardLayout from '../../components/DashboardLayout';
+import PatientList from '../../components/patients/PatientList';
 
 const userCookie = Astro.cookies.get('radix-user')?.value;
-let userName = 'Doctor';
+let userName = 'User';
 let userRole = 'Doctor';
 
 if (userCookie) {
   try {
     const user = JSON.parse(decodeURIComponent(userCookie));
-    userName = user.firstName || user.email || 'Doctor';
+    userName = user.firstName || user.email || 'User';
     userRole = user.role || 'Doctor';
   } catch (e) {}
 }
-
-const today = new Date();
-const hour = today.getHours();
-const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
-const dateStr = today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 ---
+
 <!DOCTYPE html>
 <html lang="es" class="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard | RADIX</title>
+  <title>Pacientes | RADIX</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -40,38 +35,23 @@ const dateStr = today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numer
           var c = p.colors;
           var root = document.documentElement;
           root.style.setProperty('--p', c.primary);
-          root.style.setProperty('--p-l', c.primaryLight);
           root.style.setProperty('--s', c.secondary);
-          root.style.setProperty('--b', c.background || '#f7f8fa');
-          root.style.setProperty('--sf', c.surface || '#ffffff');
+          root.style.setProperty('--b', c.background || '#ffffff');
+          root.style.setProperty('--sf', c.surface || '#f8fafc');
           root.style.setProperty('--t', c.text || '#111827');
           root.style.setProperty('--t-s', c.textSecondary || '#6b7280');
-          root.style.setProperty('--br', c.border || '#e5e7eb');
+          root.style.setProperty('--br', c.border || '#f3f4f6');
         }
       } catch (e) {}
     })();
   </script>
   <ViewTransitions />
 </head>
-<body style="background: var(--b, #f7f8fa);">
+<body style="background: var(--b, #ffffff);">
   <ThemeProvider client:load>
     <DashboardLayout client:load userName={userName} userRole={userRole}>
-      <div style="animation: fadeIn 0.4s ease-out;">
-
-
-        {/* Dashboard Stats */}
-        <DashboardStats client:load />
-      </div>
+      <PatientList client:load />
     </DashboardLayout>
   </ThemeProvider>
 </body>
 </html>
-<style>
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes livePing {
-    75%, 100% { transform: scale(2.2); opacity: 0; }
-  }
-</style>

@@ -2,7 +2,6 @@
 import { ViewTransitions } from "astro:transitions";
 import ThemeProvider from '../components/ThemeProvider';
 import DashboardLayout from '../components/DashboardLayout';
-import UsuariosList from '../components/UsuariosList';
 import '../styles/global.css';
 
 const userCookie = Astro.cookies.get('radix-user')?.value;
@@ -24,7 +23,7 @@ if (userCookie) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Usuarios | RADIX</title>
+  <title>Configuración | RADIX</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -37,23 +36,36 @@ if (userCookie) {
           var c = p.colors;
           var root = document.documentElement;
           root.style.setProperty('--p', c.primary);
+          root.style.setProperty('--p-l', c.primaryLight);
+          root.style.setProperty('--p-50', c.surface || '#f5f2ff');
+          root.style.setProperty('--p-100', c.surface || '#f5f2ff');
+          root.style.setProperty('--p-200', c.primaryLight || '#d9cfff');
           root.style.setProperty('--s', c.secondary);
-          root.style.setProperty('--b', c.background || '#ffffff');
-          root.style.setProperty('--sf', c.surface || '#f8fafc');
-          root.style.setProperty('--t', c.text || '#111827');
-          root.style.setProperty('--t-s', c.textSecondary || '#6b7280');
-          root.style.setProperty('--br', c.border || '#f3f4f6');
+          root.style.setProperty('--b', c.background);
+          root.style.setProperty('--sf', c.surface);
+          root.style.setProperty('--t', c.text);
+          root.style.setProperty('--t-s', c.textSecondary);
+          root.style.setProperty('--t-m', c.textSecondary || '#9ca3af');
+          root.style.setProperty('--a', c.accent);
+          root.style.setProperty('--a-100', '#dbeafe');
+          root.style.setProperty('--sc', c.success);
+          root.style.setProperty('--sc-100', '#d1fae5');
+          root.style.setProperty('--w', c.warning);
+          root.style.setProperty('--w-100', '#fef3c7');
+          root.style.setProperty('--e', c.error);
+          root.style.setProperty('--e-100', '#fee2e2');
+          root.style.setProperty('--br', c.border);
+          var isDark = (c.background === '#0f172a' || c.background === '#000000' || c.background === '#111827');
+          document.documentElement.className = isDark ? 'dark' : 'light';
         }
       } catch (e) {}
     })();
   </script>
   <ViewTransitions />
 </head>
-<body style="background: var(--b, #ffffff);">
+<body style="background: var(--b);">
   <ThemeProvider client:load>
-    <DashboardLayout client:load userName={userName} userRole={userRole}>
-      <UsuariosList client:load />
-    </DashboardLayout>
+    <DashboardLayout client:load userName={userName} userRole={userRole} configPage="configuration" />
   </ThemeProvider>
 </body>
 </html>

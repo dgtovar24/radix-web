@@ -2,7 +2,6 @@
 import { ViewTransitions } from "astro:transitions";
 import ThemeProvider from '../components/ThemeProvider';
 import DashboardLayout from '../components/DashboardLayout';
-import DashboardStats from '../components/DashboardStats';
 import '../styles/global.css';
 
 const userCookie = Astro.cookies.get('radix-user')?.value;
@@ -16,21 +15,16 @@ if (userCookie) {
     userRole = user.role || 'Doctor';
   } catch (e) {}
 }
-
-const today = new Date();
-const hour = today.getHours();
-const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
-const dateStr = today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 ---
 <!DOCTYPE html>
 <html lang="es" class="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard | RADIX</title>
+  <title>Rix | RADIX</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script is:inline>
     (function() {
       try {
@@ -55,23 +49,7 @@ const dateStr = today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numer
 </head>
 <body style="background: var(--b, #f7f8fa);">
   <ThemeProvider client:load>
-    <DashboardLayout client:load userName={userName} userRole={userRole}>
-      <div style="animation: fadeIn 0.4s ease-out;">
-
-
-        {/* Dashboard Stats */}
-        <DashboardStats client:load />
-      </div>
-    </DashboardLayout>
+    <DashboardLayout client:load userName={userName} userRole={userRole} configPage="rix" />
   </ThemeProvider>
 </body>
 </html>
-<style>
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes livePing {
-    75%, 100% { transform: scale(2.2); opacity: 0; }
-  }
-</style>

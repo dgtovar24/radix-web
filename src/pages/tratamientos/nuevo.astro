@@ -1,0 +1,75 @@
+---
+import { ViewTransitions } from "astro:transitions";
+import ThemeProvider from '../../components/ThemeProvider';
+import DashboardLayout from '../../components/DashboardLayout';
+import TreatmentForm from '../../components/treatments/TreatmentForm';
+
+const userCookie = Astro.cookies.get('radix-user')?.value;
+let userName = 'User';
+let userRole = 'Doctor';
+
+if (userCookie) {
+  try {
+    const user = JSON.parse(decodeURIComponent(userCookie));
+    userName = user.firstName || user.email || 'User';
+    userRole = user.role || 'Doctor';
+  } catch (e) {}
+}
+---
+
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nuevo Tratamiento | RADIX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <script is:inline>
+    const saved = localStorage.getItem('radix-palette');
+    if (saved) {
+      try {
+        const p = JSON.parse(saved);
+        const c = p.colors;
+        document.documentElement.style.setProperty('--p', c.primary);
+        document.documentElement.style.setProperty('--p-l', c.primaryLight);
+        document.documentElement.style.setProperty('--s', c.secondary);
+        document.documentElement.style.setProperty('--b', c.background);
+        document.documentElement.style.setProperty('--sf', c.surface);
+        document.documentElement.style.setProperty('--t', c.text);
+        document.documentElement.style.setProperty('--t-s', c.textSecondary);
+        document.documentElement.style.setProperty('--a', c.accent);
+        document.documentElement.style.setProperty('--sc', c.success);
+        document.documentElement.style.setProperty('--w', c.warning);
+        document.documentElement.style.setProperty('--e', c.error);
+        document.documentElement.style.setProperty('--br', c.border);
+      } catch (e) {}
+    }
+  </script>
+  <ViewTransitions />
+</head>
+<body class="font-dm-sans antialiased">
+  <ThemeProvider client:load>
+    <DashboardLayout client:load userName={userName} userRole={userRole}>
+      <div class="space-y-8 max-w-3xl mx-auto">
+        <div class="flex items-center gap-4">
+          <a href="/tratamientos" class="p-2 rounded-xl hover:bg-[var(--sf)] transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+          </a>
+          <div>
+            <h1 class="text-3xl font-bold font-display text-[var(--t)]">Nuevo Tratamiento</h1>
+            <p class="text-[var(--t-s)] mt-1">Configura el tratamiento de medicina nuclear</p>
+          </div>
+        </div>
+
+        <div class="bg-[var(--sf)] p-8 rounded-2xl border border-[var(--br)]">
+          <TreatmentForm client:load />
+        </div>
+      </div>
+    </DashboardLayout>
+  </ThemeProvider>
+</body>
+</html>

@@ -3,9 +3,26 @@ import type { APIRoute } from 'astro';
 const API_BASE = import.meta.env.PUBLIC_API_URL || 'https://api.raddix.pro/v2';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const formData = await request.formData();
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
+  let email = '';
+  let password = '';
+
+  try {
+    const contentType = request.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const body = await request.json();
+      email = body.email;
+      password = body.password;
+    } else {
+      const formData = await request.formData();
+      email = formData.get('email') as string;
+      password = formData.get('password') as string;
+    }
+  } catch {
+    return new Response(JSON.stringify({ error: 'Formato de solicitud inválido' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
   if (!email || !password) {
     return new Response(JSON.stringify({ error: 'Email y contraseña requeridos' }), {
@@ -14,8 +31,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
   }
 
-  if (email === 'Radix' && password === 'prgtest') {
-    const adminUser = { role: 'Admin', firstName: 'Admin Radix', id: 9999, token: '9999', email: 'admin@radix' };
+  // Hardcoded Admin Check
+  if (email === 'Radix' && password === 'radixelmejor1') {
+    const adminUser = { role: 'Admin', firstName: 'Admin Radix', id: 0, token: 'admin-hardcoded-token', email: 'Radix' };
     cookies.set('radix-user', encodeURIComponent(JSON.stringify(adminUser)), {
       path: '/',
       httpOnly: true,
