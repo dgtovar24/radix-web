@@ -1,100 +1,363 @@
 {
-  "api": "Radix API v1",
+  "api": "Radix API v2",
+  "basePath": "/v2",
+  "description": "Complete API Schema with expected POST bodies and GET responses for all 29 REST endpoints",
+  "categories": {
+    "auth": "Authentication and user registration",
+    "patients": "Patient management",
+    "users": "User management",
+    "treatments": "Nuclear medicine treatments",
+    "alerts": "Doctor alerts and notifications",
+    "watch": "Smartwatch data ingestion and metrics",
+    "isotopes": "Radioisotope catalog",
+    "dashboard": "Aggregated statistics"
+  },
   "endpoints": [
     {
       "path": "/api/auth/login",
-      "description": "Login user to get session ID/Token",
-      "response": {
-        "role": "string",
-        "firstName": "string",
-        "id": "integer",
-        "token": "integer (ID as token)"
-      },
       "method": "POST",
+      "description": "Login user with email/password",
       "request_body": {
-        "password": "string (required)",
-        "email": "string (required)"
+        "email": "string (required)",
+        "password": "string (required)"
+      },
+      "response": {
+        "token": "string (JWT token)",
+        "id": "integer",
+        "firstName": "string",
+        "role": "string"
+      }
+    },
+    {
+      "path": "/api/auth/token",
+      "method": "POST",
+      "description": "OAuth 2.0 token for family/smartwatch access",
+      "request_body": {
+        "grantType": "string (required)",
+        "clientId": "string (required)",
+        "clientSecret": "string (required)",
+        "scope": "string (optional)"
+      },
+      "response": {
+        "accessToken": "string",
+        "tokenType": "Bearer",
+        "expiresIn": "integer",
+        "scope": "string",
+        "patientId": "integer",
+        "patientName": "string",
+        "familyAccessCode": "string"
       }
     },
     {
       "path": "/api/auth/register/doctor",
+      "method": "POST",
+      "description": "ADMIN ONLY: Register a new doctor",
+      "headers": "Authorization: Bearer <ADMIN_TOKEN>",
       "request_body": {
-        "password": "string (required)",
-        "email": "string (required)",
         "firstName": "string (required)",
-        "lastName": "string (required)"
+        "lastName": "string (required)",
+        "email": "string (required)",
+        "password": "string (required)"
       },
       "response": {
         "message": "string",
         "id": "integer"
-      },
-      "headers": "Authorization: Bearer \u003CADMIN_ID\u003E",
-      "method": "POST",
-      "description": "ADMIN ONLY: Register a new doctor"
+      }
     },
     {
       "path": "/api/auth/register/patient",
+      "method": "POST",
+      "description": "DOCTOR ONLY: Register a new patient",
+      "headers": "Authorization: Bearer <DOCTOR_TOKEN>",
       "request_body": {
-        "phone": "string (optional)",
-        "lastName": "string (required)",
-        "password": "string (required)",
         "firstName": "string (required)",
-        "address": "string (optional)",
-        "email": "string (required)"
+        "lastName": "string (required)",
+        "email": "string (required)",
+        "password": "string (required)",
+        "phone": "string (optional)",
+        "address": "string (optional)"
       },
       "response": {
         "message": "string",
         "id": "integer"
-      },
-      "headers": "Authorization: Bearer \u003CDOCTOR_ID\u003E",
-      "method": "POST",
-      "description": "DOCTOR ONLY: Register a new patient"
+      }
     },
     {
       "path": "/api/patients",
-      "description": "Get all active patients",
+      "method": "GET",
+      "description": "List all active patients",
       "response": [
         {
           "id": "integer",
           "fullName": "string"
         }
       ],
-      "method": "GET"
+      "notes": "Currently only returns id+fullName. Should include: phone, address, isActive, familyAccessCode, fkUserId, fkDoctorId, createdAt"
     },
     {
       "path": "/api/patients/{id}",
+      "method": "GET",
       "description": "Get specific patient by internal ID",
       "response": {
         "id": "integer",
         "fullName": "string"
       },
-      "method": "GET"
+      "notes": "Same limitation as /api/patients — needs full PatientResponse"
     },
     {
       "path": "/api/patients/profile/{userId}",
-      "description": "Get specific patient by their User ID",
+      "method": "GET",
+      "description": "Get patient by their User ID",
       "response": {
         "id": "integer",
         "fullName": "string"
-      },
-      "method": "GET"
+      }
     },
     {
       "path": "/api/patients/register",
-      "description": "Legacy/alternative patient registration",
+      "method": "POST",
+      "description": "Register patient + create user account",
+      "request_body": {
+        "firstName": "string (required)",
+        "lastName": "string (required)",
+        "email": "string (required)",
+        "password": "string (required)",
+        "phone": "string (optional)",
+        "address": "string (optional)",
+        "doctorId": "integer (optional)"
+      },
       "response": {
         "message": "string",
         "userId": "integer"
-      },
-      "method": "POST",
-      "request_body": {
-        "password": "string (required)",
-        "firstName": "string (required)",
-        "lastName": "string (required)",
-        "doctorId": "string (optional)",
-        "email": "string (required)"
       }
+    },
+    {
+      "path": "/api/users",
+      "method": "GET",
+      "description": "List all users",
+      "response": [
+        {
+          "id": "integer",
+          "firstName": "string",
+          "lastName": "string",
+          "email": "string",
+          "role": "string",
+          "createdAt": "string (ISO datetime)"
+        }
+      ]
+    },
+    {
+      "path": "/api/users/role/{role}",
+      "method": "GET",
+      "description": "List users by role (Doctor, Patient, Admin)",
+      "response": "Same as /api/users"
+    },
+    {
+      "path": "/api/treatments",
+      "method": "GET",
+      "description": "List all treatments with full details",
+      "response": [
+        {
+          "id": "integer",
+          "patientName": "string",
+          "patientId": "integer",
+          "doctorName": "string",
+          "doctorId": "integer",
+          "isotopeName": "string",
+          "isotopeId": "integer",
+          "room": "integer",
+          "initialDose": "number",
+          "safetyThreshold": "number",
+          "isolationDays": "integer",
+          "startDate": "string (ISO datetime)",
+          "endDate": "string (ISO datetime, null if active)",
+          "isActive": "boolean",
+          "currentRadiation": "number (optional)"
+        }
+      ]
+    },
+    {
+      "path": "/api/treatments/active",
+      "method": "GET",
+      "description": "List active treatments only",
+      "response": "Same as /api/treatments"
+    },
+    {
+      "path": "/api/treatments/{id}",
+      "method": "GET",
+      "description": "Get treatment by ID",
+      "response": "Treatment object"
+    },
+    {
+      "path": "/api/treatments/patient/{patientId}",
+      "method": "GET",
+      "description": "Treatments for a specific patient",
+      "response": "Array of Treatment objects"
+    },
+    {
+      "path": "/api/treatments",
+      "method": "POST",
+      "description": "Create new treatment (auth required)",
+      "headers": "Authorization: Bearer <token>",
+      "request_body": {
+        "fkPatientId": "integer (required)",
+        "fkRadioisotopeId": "integer (required)",
+        "fkSmartwatchId": "integer (optional)",
+        "room": "integer (required)",
+        "initialDose": "number (required)"
+      },
+      "response": "Treatment object with calculated isolationDays and safetyThreshold"
+    },
+    {
+      "path": "/api/treatments/{id}/end",
+      "method": "POST",
+      "description": "End/close a treatment",
+      "response": "Treatment object with endDate set and isActive=false"
+    },
+    {
+      "path": "/api/alerts",
+      "method": "GET",
+      "description": "List all doctor alerts",
+      "response": [
+        {
+          "id": "integer",
+          "patientName": "string",
+          "patientId": "integer",
+          "treatmentId": "integer (optional)",
+          "alertType": "string",
+          "message": "string",
+          "isResolved": "boolean",
+          "createdAt": "string (ISO datetime)"
+        }
+      ]
+    },
+    {
+      "path": "/api/alerts/pending",
+      "method": "GET",
+      "description": "List unresolved alerts",
+      "response": "Same as /api/alerts"
+    },
+    {
+      "path": "/api/alerts/patient/{patientId}",
+      "method": "GET",
+      "description": "Alerts for a specific patient",
+      "response": "Array of Alert objects"
+    },
+    {
+      "path": "/api/alerts/{id}/resolve",
+      "method": "PUT",
+      "description": "Mark alert as resolved",
+      "response": "Alert object with isResolved=true"
+    },
+    {
+      "path": "/api/watch/ingest",
+      "method": "POST",
+      "description": "Ingest health metrics from smartwatch",
+      "headers": "Authorization: Bearer <token> (optional)",
+      "request_body": {
+        "imei": "string (required)",
+        "familyAccessCode": "string (optional)",
+        "bpm": "integer (optional)",
+        "steps": "integer (optional)",
+        "distance": "number (optional)",
+        "currentRadiation": "number (required)",
+        "recordedAt": "string (ISO datetime, optional)"
+      },
+      "response": {
+        "status": "received"
+      }
+    },
+    {
+      "path": "/api/watch/{imei}/metrics",
+      "method": "GET",
+      "description": "Get metrics history by device IMEI",
+      "response": [
+        {
+          "id": "integer",
+          "patientId": "integer",
+          "imei": "string",
+          "bpm": "integer (optional)",
+          "steps": "integer (optional)",
+          "distance": "number (optional)",
+          "currentRadiation": "number",
+          "recordedAt": "string (ISO datetime)"
+        }
+      ]
+    },
+    {
+      "path": "/api/watch/patient/{patientId}/latest",
+      "method": "GET",
+      "description": "Get latest metrics for a patient",
+      "response": "WatchMetrics object or 404"
+    },
+    {
+      "path": "/api/isotopes",
+      "method": "GET",
+      "description": "List all radioisotopes in catalog",
+      "response": [
+        {
+          "id": "integer",
+          "name": "string",
+          "symbol": "string",
+          "type": "string",
+          "halfLife": "number",
+          "halfLifeUnit": "string"
+        }
+      ]
+    },
+    {
+      "path": "/api/isotopes/{id}",
+      "method": "GET",
+      "description": "Get isotope by ID",
+      "response": "Isotope object"
+    },
+    {
+      "path": "/api/dashboard/stats",
+      "method": "GET",
+      "description": "Get aggregated dashboard statistics",
+      "response": {
+        "totalPatients": "integer",
+        "totalDoctors": "integer",
+        "activeTreatments": "integer",
+        "pendingAlerts": "integer",
+        "totalSmartwatches": "integer",
+        "activeIsotopes": "integer"
+      }
+    },
+    {
+      "path": "/",
+      "method": "GET",
+      "description": "Health check and API metadata",
+      "response": {
+        "name": "RADIX API",
+        "version": "v2.0",
+        "description": "Nuclear Medicine Treatment Management System",
+        "status": "operational",
+        "timestamp": "string (ISO datetime)",
+        "docs": "/v2/docs",
+        "endpoints": ["array of endpoint paths"]
+      }
+    },
+    {
+      "path": "/docs",
+      "method": "GET",
+      "description": "Self-documenting API schema in JSON",
+      "response": "API documentation object"
     }
   ],
-  "description": "Complete API Schema with expected POST bodies and GET responses"
+  "websocket": {
+    "path": "/ws/alerts",
+    "protocol": "ws:// (dev) / wss:// (prod)",
+    "description": "Real-time alert push WebSocket. Receives JSON Alert objects.",
+    "message": {
+      "id": "integer",
+      "patientName": "string",
+      "patientId": "integer",
+      "treatmentId": "integer (optional)",
+      "alertType": "string",
+      "message": "string",
+      "isResolved": "boolean",
+      "createdAt": "string (ISO datetime)"
+    }
+  }
 }
