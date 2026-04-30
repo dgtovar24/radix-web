@@ -3,6 +3,11 @@ node_modules/
 dist/
 .astro/
 
+# Temporary checks
+.tmp-*/
+*.sh
+*.mjs
+
 # Logs
 *.log
 
