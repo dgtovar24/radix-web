@@ -52,7 +52,7 @@ if (userCookie) {
 <body style="background: var(--b, #ffffff);">
   <ThemeProvider client:load>
     <DashboardLayout client:load userName={userName} userRole={userRole}>
-      <UsuariosList client:load />
+      <UsuariosList client:load currentUserRole={userRole} />
     </DashboardLayout>
   </ThemeProvider>
 </body>

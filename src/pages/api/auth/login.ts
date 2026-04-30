@@ -33,7 +33,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   // Hardcoded Admin Check
   if (email === 'Radix' && password === 'radixelmejor1') {
-    const adminUser = { role: 'Admin', firstName: 'Admin Radix', id: 0, token: 'admin-hardcoded-token', email: 'Radix' };
+    const adminUser = { role: 'ADMIN', firstName: 'Admin Radix', id: 0, token: 'admin-hardcoded-token', email: 'Radix' };
     cookies.set('radix-user', encodeURIComponent(JSON.stringify(adminUser)), {
       path: '/',
       httpOnly: true,
@@ -59,8 +59,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
   }
 
-  // Only allow Admin and Doctors to login
-  if (data.role !== 'Admin' && data.role !== 'Doctor') {
+  const normalizedRole = String(data.role || '').toLowerCase();
+  const allowedRoles = ['admin', 'doctor', 'facultativo', 'desarrollador', 'developer'];
+  if (!allowedRoles.includes(normalizedRole)) {
     return new Response(JSON.stringify({ error: 'Acceso denegado. Solo personal autorizado.' }), {
       status: 403,
       headers: { 'Content-Type': 'application/json' },
@@ -68,7 +69,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   // Store user object in a cookie as the session identifier
-  cookies.set('radix-user', encodeURIComponent(JSON.stringify({ email, ...data })), {
+  const role = normalizedRole === 'doctor'
+    ? 'FACULTATIVO'
+    : normalizedRole === 'developer'
+      ? 'DESARROLLADOR'
+      : String(data.role || '').toUpperCase();
+
+  cookies.set('radix-user', encodeURIComponent(JSON.stringify({ email, ...data, role })), {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
@@ -76,7 +83,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     secure: import.meta.env.PROD,
   });
 
-  return new Response(JSON.stringify({ success: true, user: data }), {
+  return new Response(JSON.stringify({ success: true, user: { ...data, role } }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });

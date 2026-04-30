@@ -50,7 +50,7 @@ export default function DashboardStats() {
     { id: 'kpi', visible: widgets.kpi !== false, component: <KpiRowWidget />, title: 'Key Performance Indicators' },
     { id: 'radiation', visible: widgets.radiation !== false, component: <RadiationChartWidget />, title: 'Radiation Logs' },
     { id: 'isotope', visible: widgets.isotope !== false, component: <IsotopeDistributionWidget />, title: 'Isotope Distribution' },
-    { id: 'alerts', visible: widgets.alerts !== false, component: <AlertsBarChartWidget />, title: 'Doctor Alerts' },
+    { id: 'alerts', visible: widgets.alerts !== false, component: <AlertsBarChartWidget />, title: 'Alertas' },
     { id: 'radar', visible: widgets.radar !== false, component: <PatientActivityRadarWidget />, title: 'Patient Analytics' },
   ];
 

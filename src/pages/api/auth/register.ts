@@ -28,7 +28,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   let callerRole = '';
   try {
     const user = JSON.parse(decodeURIComponent(userCookie));
-    callerRole = user.role;
+    callerRole = String(user.role || '').toLowerCase();
     callerToken = user.token || user.id;
   } catch {}
 
@@ -43,10 +43,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   let endpoint = `${API_BASE}/api/auth/register/patient`;
   let backendPayload: any = {};
 
-  if (callerRole === 'Admin') {
+  if (callerRole === 'admin' || callerRole === 'desarrollador' || callerRole === 'developer') {
     endpoint = `${API_BASE}/api/auth/register/doctor`;
     backendPayload = { firstName, lastName, email, password };
-  } else if (callerRole === 'Doctor') {
+  } else if (callerRole === 'doctor' || callerRole === 'facultativo') {
     endpoint = `${API_BASE}/api/auth/register/patient`;
     backendPayload = { firstName, lastName, email, password, phone, address };
   } else {

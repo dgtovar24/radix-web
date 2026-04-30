@@ -2,7 +2,6 @@
 import { ViewTransitions } from "astro:transitions";
 import ThemeProvider from '../components/ThemeProvider';
 import DashboardLayout from '../components/DashboardLayout';
-import FacultativosList from '../components/FacultativosList';
 import '../styles/global.css';
 
 const userCookie = Astro.cookies.get('radix-user')?.value;
@@ -24,10 +23,10 @@ if (userCookie) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Facultativos | RADIX</title>
+  <title>Mi perfil | RADIX</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <script is:inline>
     (function() {
       try {
@@ -51,9 +50,7 @@ if (userCookie) {
 </head>
 <body style="background: var(--b, #ffffff);">
   <ThemeProvider client:load>
-    <DashboardLayout client:load userName={userName} userRole={userRole}>
-      <FacultativosList client:load />
-    </DashboardLayout>
+    <DashboardLayout client:load userName={userName} userRole={userRole} configPage="profile" />
   </ThemeProvider>
 </body>
 </html>

@@ -23,7 +23,7 @@ export default function UserRegistrationWizard() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [data, setData] = useState<UserWizardData>({
-    role: 'DOCTOR', email: '', password: '',
+    role: 'FACULTATIVO', email: '', password: '',
     firstName: '', lastName: '', phone: '',
     colegiadoNumber: '', specialty: ''
   });
@@ -40,7 +40,7 @@ export default function UserRegistrationWizard() {
     }, 1500);
   };
 
-  const isDoctor = data.role === 'DOCTOR';
+  const isDoctor = data.role === 'FACULTATIVO' || data.role === 'ADMIN';
   const totalSteps = isDoctor ? 4 : 3; // Skip professional details if not a doctor
 
   const inputStyle = {
@@ -129,39 +129,33 @@ export default function UserRegistrationWizard() {
             <div>
               <label style={labelStyle}>Rol del Usuario *</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div 
-                  onClick={() => handleChange('role', 'DOCTOR')}
+                {[
+                  ['DESARROLLADOR', 'Desarrollador', 'Acceso técnico y soporte de plataforma', Shield],
+                  ['ADMIN', 'Administrador', 'Gestión total y facultativo clínico', Shield],
+                  ['FACULTATIVO', 'Facultativo', 'Pacientes, tratamientos y alertas', Briefcase],
+                ].map(([role, title, description, Icon]) => {
+                  const RoleIcon = Icon as typeof Shield;
+                  const active = data.role === role;
+                  return (
+                <div
+                  key={role as string}
+                  onClick={() => handleChange('role', role as string)}
                   style={{ 
-                    border: `2px solid ${data.role === 'DOCTOR' ? 'var(--p)' : 'var(--br, #e5e7eb)'}`, 
+                    border: `2px solid ${active ? 'var(--p)' : 'var(--br, #e5e7eb)'}`,
                     padding: 16, borderRadius: 12, cursor: 'pointer',
-                    background: data.role === 'DOCTOR' ? 'var(--p)' : 'transparent',
+                    background: active ? 'var(--p)' : 'transparent',
                     display: 'flex', alignItems: 'center', gap: 12,
-                    color: data.role === 'DOCTOR' ? 'var(--b)' : 'var(--t)'
+                    color: active ? 'var(--b)' : 'var(--t)'
                   }}
                 >
-                  <Briefcase size={24} color={data.role === 'DOCTOR' ? 'var(--b)' : 'var(--t-s, #9ca3af)'} />
+                  <RoleIcon size={24} color={active ? 'var(--b)' : 'var(--t-s, #9ca3af)'} />
                   <div>
-                    <div style={{ fontWeight: 600, color: data.role === 'DOCTOR' ? 'var(--b)' : 'var(--t, #111827)' }}>Médico Especialista</div>
-                    <div style={{ fontSize: 12, color: data.role === 'DOCTOR' ? 'var(--b)' : 'var(--t-s, #6b7280)', opacity: 0.8 }}>Acceso a pacientes y tratamientos</div>
+                    <div style={{ fontWeight: 600, color: active ? 'var(--b)' : 'var(--t, #111827)' }}>{title as string}</div>
+                    <div style={{ fontSize: 12, color: active ? 'var(--b)' : 'var(--t-s, #6b7280)', opacity: 0.8 }}>{description as string}</div>
                   </div>
                 </div>
-                
-                <div 
-                  onClick={() => handleChange('role', 'ADMIN')}
-                  style={{ 
-                    border: `2px solid ${data.role === 'ADMIN' ? 'var(--p)' : 'var(--br, #e5e7eb)'}`, 
-                    padding: 16, borderRadius: 12, cursor: 'pointer',
-                    background: data.role === 'ADMIN' ? 'var(--p)' : 'transparent',
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    color: data.role === 'ADMIN' ? 'var(--b)' : 'var(--t)'
-                  }}
-                >
-                  <Shield size={24} color={data.role === 'ADMIN' ? 'var(--b)' : 'var(--t-s, #9ca3af)'} />
-                  <div>
-                    <div style={{ fontWeight: 600, color: data.role === 'ADMIN' ? 'var(--b)' : 'var(--t, #111827)' }}>Administrador</div>
-                    <div style={{ fontSize: 12, color: data.role === 'ADMIN' ? 'var(--b)' : 'var(--t-s, #6b7280)', opacity: 0.8 }}>Gestión total del sistema</div>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -249,7 +243,7 @@ export default function UserRegistrationWizard() {
                 <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--t, #111827)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><Shield size={16} /> Cuenta</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--t-s, #6b7280)', fontSize: 13 }}>Email de Acceso:</span> <span style={{ color: 'var(--t, #111827)', fontWeight: 500, fontSize: 13 }}>{data.email || '-'}</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--t-s, #6b7280)', fontSize: 13 }}>Nivel de Acceso:</span> <span style={{ color: 'var(--t, #111827)', fontWeight: 500, fontSize: 13 }}>{data.role === 'DOCTOR' ? 'Médico Especialista' : 'Administrador'}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--t-s, #6b7280)', fontSize: 13 }}>Nivel de Acceso:</span> <span style={{ color: 'var(--t, #111827)', fontWeight: 500, fontSize: 13 }}>{data.role}</span></div>
                 </div>
               </div>
             </div>

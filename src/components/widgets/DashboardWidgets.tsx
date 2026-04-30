@@ -30,7 +30,7 @@ function PatientFilterDropdown({ selectedId, onSelect }: { selectedId: string, o
   const selectedPatient = MOCK_PATIENTS_LIST.find(p => p.id === selectedId);
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', zIndex: 100 }}>
+    <div ref={dropdownRef} onClick={(event) => event.stopPropagation()} style={{ position: 'relative', zIndex: 100 }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
@@ -120,6 +120,10 @@ function PatientFilterDropdown({ selectedId, onSelect }: { selectedId: string, o
 }
 
 export function KpiRowWidget() {
+  const goTo = (href: string) => {
+    window.location.href = href;
+  };
+
   return (
     <div style={{
       display: 'grid',
@@ -127,7 +131,7 @@ export function KpiRowWidget() {
       gap: 20,
     }}>
       {/* Total Patients */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--b, #ffffff)', padding: 20, borderRadius: 16, border: '1px solid var(--br, #f3f4f6)' }}>
+      <button type="button" onClick={() => goTo('/pacientes')} style={clickableKpiStyle}>
         <div style={{
           width: 48, height: 48, borderRadius: 12, background: 'var(--sf, #f8fafc)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t, #111827)'
@@ -143,10 +147,10 @@ export function KpiRowWidget() {
             </span>
           </div>
         </div>
-      </div>
+      </button>
 
       {/* Active Treatments */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--b, #ffffff)', padding: 20, borderRadius: 16, border: '1px solid var(--br, #f3f4f6)' }}>
+      <button type="button" onClick={() => goTo('/tratamientos')} style={clickableKpiStyle}>
         <div style={{
           width: 48, height: 48, borderRadius: 12, background: 'var(--sf, #f8fafc)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t, #111827)'
@@ -162,10 +166,10 @@ export function KpiRowWidget() {
             </span>
           </div>
         </div>
-      </div>
+      </button>
 
       {/* Pending Alerts */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, background: 'var(--b, #ffffff)', padding: 20, borderRadius: 16, border: '1px solid var(--br, #f3f4f6)' }}>
+      <button type="button" onClick={() => goTo('/alertas')} style={clickableKpiStyle}>
         <div style={{
           width: 48, height: 48, borderRadius: 12, background: 'var(--sf, #f8fafc)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t, #111827)'
@@ -181,7 +185,7 @@ export function KpiRowWidget() {
             </span>
           </div>
         </div>
-      </div>
+      </button>
     </div>
   );
 }
@@ -262,7 +266,7 @@ export function RadiationChartWidget() {
   };
 
   return (
-    <div style={{ background: 'var(--b, #ffffff)', padding: 24, borderRadius: 16, border: '1px solid var(--br, #f3f4f6)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div onClick={() => window.location.href = '/pacientes'} role="button" tabIndex={0} onKeyDown={(event) => event.key === 'Enter' && (window.location.href = '/pacientes')} style={clickableChartStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sf, #f8fafc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t, #111827)' }}>
@@ -342,7 +346,7 @@ export function IsotopeDistributionWidget() {
   const COLORS = ['var(--p)', 'var(--s)', '#10b981', '#f59e0b'];
 
   return (
-    <div style={{ background: 'var(--b, #ffffff)', padding: 24, borderRadius: 16, border: '1px solid var(--br, #f3f4f6)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div onClick={() => window.location.href = '/tratamientos'} role="button" tabIndex={0} onKeyDown={(event) => event.key === 'Enter' && (window.location.href = '/tratamientos')} style={clickableChartStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sf, #f8fafc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t, #111827)' }}>
           <Target size={16} />
@@ -394,7 +398,7 @@ export function AlertsBarChartWidget() {
   }, []);
 
   return (
-    <div style={{ background: 'var(--b, #ffffff)', padding: 24, borderRadius: 16, border: '1px solid var(--br, #f3f4f6)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div onClick={() => window.location.href = '/alertas'} role="button" tabIndex={0} onKeyDown={(event) => event.key === 'Enter' && (window.location.href = '/alertas')} style={clickableChartStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sf, #f8fafc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t, #111827)' }}>
           <AlertTriangle size={16} />
@@ -442,7 +446,7 @@ export function PatientActivityRadarWidget() {
     : MOCK_RADAR_DATA.map(d => ({ ...d, A: Math.max(50, d.A - 30) }));
 
   return (
-    <div style={{ background: 'var(--b, #ffffff)', padding: 24, borderRadius: 16, border: '1px solid var(--br, #f3f4f6)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div onClick={() => window.location.href = '/pacientes'} role="button" tabIndex={0} onKeyDown={(event) => event.key === 'Enter' && (window.location.href = '/pacientes')} style={clickableChartStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sf, #f8fafc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t, #111827)' }}>
@@ -476,3 +480,29 @@ export function PatientActivityRadarWidget() {
     </div>
   );
 }
+
+const clickableKpiStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 16,
+  background: 'var(--b, #ffffff)',
+  padding: 20,
+  borderRadius: 16,
+  border: '1px solid var(--br, #f3f4f6)',
+  textAlign: 'left',
+  cursor: 'pointer',
+  fontFamily: "'Inter', sans-serif",
+  transition: 'transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease',
+};
+
+const clickableChartStyle: React.CSSProperties = {
+  background: 'var(--b, #ffffff)',
+  padding: 24,
+  borderRadius: 16,
+  border: '1px solid var(--br, #f3f4f6)',
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  cursor: 'pointer',
+  outline: 'none',
+};

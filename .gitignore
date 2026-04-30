@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+dist/
+.astro/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Env
+.env
+.env.local
+.env.production

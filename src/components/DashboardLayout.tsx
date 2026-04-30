@@ -21,26 +21,23 @@ import {
   MessageCircle,
   Minimize2,
   Mic,
-  MoreVertical,
   Paperclip,
-  Phone,
   Plus,
+  Search,
   Send,
   Settings,
   Shield,
   Smile,
   Sparkles,
-  Stethoscope,
   UserPlus,
   Users,
-  Video,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children?: React.ReactNode;
   userName: string;
   userRole: string;
-  configPage?: 'configuration' | 'patients' | 'treatments' | 'devices' | 'rix';
+  configPage?: 'configuration' | 'patients' | 'treatments' | 'devices' | 'rix' | 'profile';
 }
 
 type RightPanelTab = 'chat' | 'rix';
@@ -59,19 +56,22 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
   const [isRixExpanding, setIsRixExpanding] = useState(isRixRoute);
   const [isChatExpanded, setIsChatExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [calendarPatientFilter, setCalendarPatientFilter] = useState('todos');
   const [activeNav] = useState(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
+      if (path.includes('mi-perfil')) return 'profile';
       if (path.includes('pacientes')) return 'pacientes';
       if (path.includes('tratamientos')) return 'tratamientos';
       if (path.includes('alertas')) return 'alertas';
       if (path.includes('usuarios')) return 'usuarios';
-      if (path.includes('facultativos')) return 'facultativos';
       if (path.includes('configuracion')) return 'settings';
       if (path.includes('rix')) return 'rix';
     }
     if (configPage === 'configuration') return 'settings';
     if (configPage === 'rix') return 'rix';
+    if (configPage === 'profile') return 'profile';
     return 'home';
   });
 
@@ -200,9 +200,9 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
     tratamientos: { title: 'Tratamientos Activos', subtitle: 'Controla los planes de medicina nuclear en curso.' },
     alertas: { title: 'Centro de Alertas', subtitle: 'Avisos y notificaciones médicas urgentes.' },
     usuarios: { title: 'Usuarios del Sistema', subtitle: 'Administra los roles y accesos a la plataforma.' },
-    facultativos: { title: 'Cuadro Médico', subtitle: 'Directorio de doctores y especialistas.' },
     settings: { title: 'Configuración', subtitle: 'Ajusta tus preferencias visuales y de cuenta.' },
     rix: { title: 'Rix', subtitle: 'Asistente de IA de Radix.' },
+    profile: { title: 'Mi perfil', subtitle: 'Gestiona tu identidad y la sesión activa.' },
   };
 
   const currentHeader = headerContent[activeNav as keyof typeof headerContent] || headerContent.home;
@@ -226,6 +226,7 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
       <LeftSidebar
         activeNav={activeNav}
         activeRightTab={activeRightTab}
+        chatExpanded={isChatExpanded}
         isOpen={isMobile ? isMobileMenuOpen : isLeftSidebarOpen}
         isMobile={isMobile}
         onChatClick={() => {
@@ -318,24 +319,43 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, alignSelf: isMobile ? 'stretch' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
-              <div style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: 'var(--t-s, #4b5563)', whiteSpace: 'nowrap' }}>16 May, 2023</div>
-              <div style={{
-                width: isMobile ? 34 : 36,
-                height: isMobile ? 34 : 36,
-                borderRadius: 10,
-                background: 'var(--sf, #f3f4f6)',
-                border: '1px solid var(--br, transparent)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--t, #111827)',
-              }}>
+              <button
+                type="button"
+                onClick={() => setIsCalendarOpen(true)}
+                aria-label="Abrir calendario de pacientes"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: isMobile ? '7px 8px 7px 12px' : '8px 9px 8px 12px',
+                  borderRadius: 14,
+                  border: '1px solid var(--br, #e5e7eb)',
+                  background: 'var(--sf, #ffffff)',
+                  color: 'var(--t, #111827)',
+                  boxShadow: '0 4px 14px rgba(15,23,42,0.04)',
+                  cursor: 'pointer',
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                <span style={{ fontSize: isMobile ? 12 : 13, fontWeight: 700, color: 'var(--t-s, #4b5563)', whiteSpace: 'nowrap' }}>16 May, 2023</span>
+                <span style={{
+                  width: isMobile ? 32 : 34,
+                  height: isMobile ? 32 : 34,
+                  borderRadius: 10,
+                  background: 'var(--b, #f3f4f6)',
+                  border: '1px solid var(--br, transparent)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--t, #111827)',
+                }}>
                 <Calendar size={16} strokeWidth={2} />
-              </div>
+                </span>
+              </button>
             </div>
           </div>
 
-          {configPage === 'configuration' ? <ConfigurationPage /> : children}
+          {configPage === 'configuration' ? <ConfigurationPage /> : configPage === 'profile' ? <ProfilePage userName={userName} userRole={userRole} /> : children}
         </main>
       </div>
 
@@ -351,6 +371,14 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
         onOpenFloating={openMobileAssistant}
         onCloseMobile={closeMobileAssistant}
       />
+
+      <PatientCalendarModal
+        open={isCalendarOpen}
+        selectedPatient={calendarPatientFilter}
+        onSelectedPatientChange={setCalendarPatientFilter}
+        onClose={() => setIsCalendarOpen(false)}
+        isMobile={isMobile}
+      />
     </div>
   );
 }
@@ -358,6 +386,7 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
 function LeftSidebar({
   activeNav,
   activeRightTab,
+  chatExpanded,
   isOpen,
   isMobile,
   onChatClick,
@@ -365,6 +394,7 @@ function LeftSidebar({
 }: {
   activeNav: string;
   activeRightTab: RightPanelTab;
+  chatExpanded: boolean;
   isOpen: boolean;
   isMobile: boolean;
   onChatClick: () => void;
@@ -376,7 +406,6 @@ function LeftSidebar({
     { id: 'tratamientos', label: 'Tratamientos', icon: Activity, href: '/tratamientos' },
     { id: 'alertas', label: 'Alertas', icon: Bell, href: '/alertas' },
     { id: 'usuarios', label: 'Usuarios', icon: Shield, href: '/usuarios' },
-    { id: 'facultativos', label: 'Facultativos', icon: Stethoscope, href: '/facultativos' },
     { id: 'chat', label: 'Chat interno', icon: MessageCircle, onClick: onChatClick },
     { id: 'rix', label: 'Rix', icon: Bot, href: '/rix' },
     { id: 'settings', label: 'Configuración', icon: Settings, href: '/configuracion' },
@@ -441,7 +470,7 @@ function LeftSidebar({
           {navItems.map(item => {
             const Icon = item.icon;
             const active = item.id === 'chat'
-              ? activeRightTab === 'chat'
+              ? activeRightTab === 'chat' && chatExpanded
               : item.id === 'rix'
                 ? activeRightTab === 'rix'
                 : activeNav === item.id;
@@ -488,7 +517,65 @@ function LeftSidebar({
           })}
         </nav>
 
-        <div style={{ padding: '0 16px 24px' }}>
+        <div style={{ padding: '0 16px 12px', display: 'grid', gap: 8 }}>
+          <div style={{
+            padding: 12,
+            borderRadius: 16,
+            background: 'var(--b, #f8fafc)',
+            border: '1px solid var(--br, #e5e7eb)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                background: 'var(--p, #7c3aed)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 900,
+                fontSize: 13,
+              }}>
+                A
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>Admin Radix</div>
+                <div style={{ fontSize: 11, color: 'var(--t-s, #6b7280)' }}>Sesión activa</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              <a href="/mi-perfil" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 10px',
+                borderRadius: 10,
+                background: activeNav === 'profile' ? 'color-mix(in srgb, var(--p, #7c3aed) 10%, #ffffff)' : 'transparent',
+                color: activeNav === 'profile' ? 'var(--p, #7c3aed)' : 'var(--t, #111827)',
+                textDecoration: 'none',
+                fontSize: 12,
+                fontWeight: 800,
+              }}>
+                <Shield size={15} />
+                Mi perfil
+              </a>
+              <a href="/login" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 10px',
+                borderRadius: 10,
+                color: 'var(--t-s, #6b7280)',
+                textDecoration: 'none',
+                fontSize: 12,
+                fontWeight: 800,
+              }}>
+                <Users size={15} />
+                Cambiar usuario
+              </a>
+            </div>
+          </div>
           <a href="/login" style={{
             display: 'flex',
             alignItems: 'center',
@@ -758,6 +845,28 @@ function RightPanelTabs({
 }
 
 function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
+  const directoryUsers = [
+    { id: 'megan', name: 'Megan Norton', role: 'Oncologia nuclear', status: 'Disponible', img: '47' },
+    { id: 'floyd', name: 'Floyd Miles', role: 'Técnico de turno', status: 'En sala', img: '11' },
+    { id: 'guy', name: 'Guy Hawkins', role: 'Dosimetría', status: 'Disponible', img: '3' },
+    { id: 'kristin', name: 'Kristin Watson', role: 'Seguimiento', status: 'Ocupada', img: '9' },
+  ];
+  const directChats = [
+    { id: 'aislamiento', title: 'Aislamiento I-131', meta: '4 mensajes nuevos', excerpt: 'Revisión de dosis antes del cierre.' },
+    { id: 'reloj', title: 'Sincronización de reloj', meta: '10:18 AM', excerpt: 'Métricas entrando correctamente.' },
+  ];
+  const groupChats = [
+    { id: 'comite', title: 'Comité terapia I-131', meta: '3 médicos', excerpt: 'Rix y equipo clínico revisan evolución.' },
+    { id: 'guardia', title: 'Guardia medicina nuclear', meta: '6 miembros', excerpt: 'Incidencias y continuidad asistencial.' },
+  ];
+  const [directoryTab, setDirectoryTab] = useState<'usuarios' | 'chats' | 'grupales'>('usuarios');
+  const [query, setQuery] = useState('');
+  const [selectedUser, setSelectedUser] = useState(directoryUsers[0].id);
+  const filteredUsers = directoryUsers.filter(user =>
+    `${user.name} ${user.role}`.toLowerCase().includes(query.toLowerCase())
+  );
+  const selectedUserData = directoryUsers.find(user => user.id === selectedUser) || directoryUsers[0];
+
   return (
     <>
       <div style={{ padding: isMobile ? '16px 16px 0' : '24px 24px 0' }}>
@@ -765,38 +874,177 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
           background: 'var(--b, #f8fafc)',
           border: '1px solid var(--br, transparent)',
           borderRadius: 20,
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
+          padding: 14,
+          display: 'grid',
+          gap: 12,
         }}>
-          <div style={{ position: 'relative', marginBottom: 12 }}>
-            <img
-              src="https://i.pravatar.cc/150?img=47"
-              alt="Megan Norton"
-              style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover' }}
-            />
-            <div style={{
-              position: 'absolute',
-              bottom: 2,
-              right: 2,
-              width: 14,
-              height: 14,
-              borderRadius: '50%',
-              background: 'var(--p, #10b981)',
-              border: '2px solid var(--b, #f8fafc)',
-            }} />
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 6,
+            padding: 4,
+            borderRadius: 14,
+            background: 'var(--sf, #ffffff)',
+            border: '1px solid var(--br, #e5e7eb)',
+          }}>
+            {[
+              ['usuarios', 'Usuarios', Users],
+              ['chats', 'Chats', MessageCircle],
+              ['grupales', 'Grupales', UserPlus],
+            ].map(([id, label, Icon]) => {
+              const active = directoryTab === id;
+              const TabIcon = Icon as typeof Users;
+              return (
+                <button
+                  key={id as string}
+                  type="button"
+                  onClick={() => setDirectoryTab(id as 'usuarios' | 'chats' | 'grupales')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    minHeight: 34,
+                    border: 'none',
+                    borderRadius: 10,
+                    background: active ? 'color-mix(in srgb, var(--p, #7c3aed) 10%, #ffffff)' : 'transparent',
+                    color: active ? 'var(--p, #7c3aed)' : 'var(--t-s, #6b7280)',
+                    fontSize: 11,
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  <TabIcon size={14} />
+                  <span>{label as string}</span>
+                </button>
+              );
+            })}
           </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--t, #111827)' }}>Megan Norton</div>
-          <div style={{ fontSize: 13, color: 'var(--t-s, #9ca3af)', marginTop: 2, marginBottom: 20 }}>@megnorton</div>
 
-          <div style={{ display: 'flex', gap: 12 }}>
-            {[Phone, Video, MoreVertical].map((Icon, i) => (
-              <button key={i} style={circleButtonStyle}>
-                <Icon size={18} strokeWidth={2} />
+          {directoryTab === 'usuarios' && (
+            <>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                borderRadius: 14,
+                border: '1px solid var(--br, #e5e7eb)',
+                background: 'var(--sf, #ffffff)',
+                padding: '8px 10px',
+              }}>
+                <Search size={15} color="var(--t-s, #6b7280)" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Buscar usuario..."
+                  style={{
+                    minWidth: 0,
+                    flex: 1,
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    color: 'var(--t, #111827)',
+                    fontSize: 12,
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                />
+              </div>
+              <div style={{ display: 'grid', gap: 8, maxHeight: isMobile ? 220 : 190, overflowY: 'auto' }}>
+                {filteredUsers.map(user => {
+                  const selected = user.id === selectedUser;
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onClick={() => setSelectedUser(user.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        width: '100%',
+                        padding: 10,
+                        borderRadius: 14,
+                        border: selected ? '1px solid color-mix(in srgb, var(--p, #7c3aed) 42%, transparent)' : '1px solid var(--br, #e5e7eb)',
+                        background: selected ? 'color-mix(in srgb, var(--p, #7c3aed) 8%, #ffffff)' : 'var(--sf, #ffffff)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: "'Inter', sans-serif",
+                      }}
+                    >
+                      <img src={`https://i.pravatar.cc/150?img=${user.img}`} alt={user.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>{user.name}</div>
+                        <div style={{ marginTop: 2, fontSize: 11, color: 'var(--t-s, #6b7280)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.role}</div>
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: user.status === 'Disponible' ? 'var(--sc, #10b981)' : 'var(--t-s, #6b7280)' }}>{user.status}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button type="button" style={{
+                width: '100%',
+                border: 'none',
+                borderRadius: 14,
+                padding: '11px 14px',
+                background: 'var(--p, #7c3aed)',
+                color: '#ffffff',
+                fontSize: 12,
+                fontWeight: 900,
+                cursor: 'pointer',
+                fontFamily: "'Inter', sans-serif",
+              }}>
+                Chatear con {selectedUserData.name}
               </button>
-            ))}
-          </div>
+            </>
+          )}
+
+          {directoryTab !== 'usuarios' && (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {(directoryTab === 'chats' ? directChats : groupChats).map(chat => (
+                <button
+                  key={chat.id}
+                  type="button"
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: 12,
+                    borderRadius: 14,
+                    border: '1px solid var(--br, #e5e7eb)',
+                    background: 'var(--sf, #ffffff)',
+                    cursor: 'pointer',
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>{chat.title}</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--p, #7c3aed)', whiteSpace: 'nowrap' }}>{chat.meta}</span>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 11, lineHeight: 1.45, color: 'var(--t-s, #6b7280)' }}>{chat.excerpt}</div>
+                </button>
+              ))}
+              {directoryTab === 'grupales' && (
+                <button type="button" style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  border: '1px solid var(--br, #e5e7eb)',
+                  borderRadius: 14,
+                  padding: '10px 12px',
+                  background: 'var(--t, #111827)',
+                  color: 'var(--sf, #ffffff)',
+                  fontSize: 12,
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  fontFamily: "'Inter', sans-serif",
+                }}>
+                  <Plus size={15} />
+                  Nuevo chat grupal
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1360,6 +1608,286 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   );
 }
 
+const calendarPatients = [
+  { id: 'todos', name: 'Todos los pacientes', start: '', end: '', color: 'var(--p, #7c3aed)' },
+  { id: 'maria', name: 'María González', start: '2023-05-03', end: '2023-05-17', color: '#7c3aed' },
+  { id: 'floyd', name: 'Floyd Miles', start: '2023-05-07', end: '2023-05-21', color: '#0ea5e9' },
+  { id: 'guy', name: 'Guy Hawkins', start: '2023-05-11', end: '2023-05-25', color: '#10b981' },
+  { id: 'kristin', name: 'Kristin Watson', start: '2023-05-15', end: '2023-05-29', color: '#f59e0b' },
+];
+
+function PatientCalendarModal({
+  open,
+  selectedPatient,
+  onSelectedPatientChange,
+  onClose,
+  isMobile,
+}: {
+  open: boolean;
+  selectedPatient: string;
+  onSelectedPatientChange: (patientId: string) => void;
+  onClose: () => void;
+  isMobile: boolean;
+}) {
+  if (!open) return null;
+
+  const visiblePatients = calendarPatients.filter(patient => patient.id !== 'todos' && (selectedPatient === 'todos' || patient.id === selectedPatient));
+  const monthDays = Array.from({ length: 35 }, (_, index) => index - 0);
+
+  const dateToDay = (value: string) => Number(value.split('-')[2]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Calendario de pacientes"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 120,
+        display: 'flex',
+        alignItems: isMobile ? 'flex-end' : 'center',
+        justifyContent: 'center',
+        padding: isMobile ? 0 : 24,
+        background: 'rgba(15, 23, 42, 0.32)',
+        backdropFilter: 'blur(8px)',
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Cerrar calendario"
+        onClick={onClose}
+        style={{ position: 'absolute', inset: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+      />
+      <div style={{
+        position: 'relative',
+        width: isMobile ? '100%' : 'min(920px, calc(100vw - 48px))',
+        maxHeight: isMobile ? '88dvh' : 'min(720px, calc(100dvh - 48px))',
+        overflow: 'auto',
+        borderRadius: isMobile ? '24px 24px 0 0' : 28,
+        border: '1px solid var(--br, #e5e7eb)',
+        background: 'var(--sf, #ffffff)',
+        boxShadow: '0 28px 90px rgba(15,23,42,0.22)',
+        padding: isMobile ? 18 : 24,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 10, color: 'var(--p, #7c3aed)', fontSize: 12, fontWeight: 900 }}>
+              <Calendar size={16} />
+              Rango clínico
+            </div>
+            <h2 style={{ margin: 0, color: 'var(--t, #111827)', fontSize: isMobile ? 24 : 30, lineHeight: 1.05, fontWeight: 900, letterSpacing: '-0.02em' }}>
+              Calendario de pacientes
+            </h2>
+            <p style={{ margin: '8px 0 0', color: 'var(--t-s, #6b7280)', fontSize: 13, lineHeight: 1.5 }}>
+              Visualiza inicio y fin de seguimiento por paciente usando datos temporales del frontend.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Cerrar" style={{
+            width: 38,
+            height: 38,
+            borderRadius: 12,
+            border: '1px solid var(--br, #e5e7eb)',
+            background: 'var(--b, #f8fafc)',
+            color: 'var(--t, #111827)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '240px minmax(0, 1fr)',
+          gap: 18,
+        }}>
+          <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>Filtrar por paciente</div>
+            {calendarPatients.map(patient => {
+              const active = selectedPatient === patient.id;
+              return (
+                <button
+                  key={patient.id}
+                  type="button"
+                  onClick={() => onSelectedPatientChange(patient.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 14,
+                    border: active ? '1px solid color-mix(in srgb, var(--p, #7c3aed) 42%, transparent)' : '1px solid var(--br, #e5e7eb)',
+                    background: active ? 'color-mix(in srgb, var(--p, #7c3aed) 8%, #ffffff)' : 'var(--b, #f8fafc)',
+                    color: active ? 'var(--t, #111827)' : 'var(--t-s, #6b7280)',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: patient.color, flexShrink: 0 }} />
+                  {patient.name}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{
+            borderRadius: 22,
+            border: '1px solid var(--br, #e5e7eb)',
+            background: 'var(--b, #f8fafc)',
+            padding: isMobile ? 12 : 16,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--t, #111827)' }}>Mayo 2023</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--t-s, #6b7280)' }}>{visiblePatients.length} rangos visibles</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, marginBottom: 6 }}>
+              {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
+                <div key={day} style={{ textAlign: 'center', fontSize: 11, fontWeight: 900, color: 'var(--t-s, #6b7280)' }}>{day}</div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6 }}>
+              {monthDays.map((_, index) => {
+                const day = index + 1 <= 31 ? index + 1 : null;
+                const matching = day ? visiblePatients.filter(patient => {
+                  const start = dateToDay(patient.start);
+                  const end = dateToDay(patient.end);
+                  return day >= start && day <= end;
+                }) : [];
+                return (
+                  <div key={index} style={{
+                    minHeight: isMobile ? 42 : 54,
+                    borderRadius: 12,
+                    border: '1px solid var(--br, #e5e7eb)',
+                    background: day ? 'var(--sf, #ffffff)' : 'transparent',
+                    padding: 6,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
+                  }}>
+                    {day && <div style={{ fontSize: 11, fontWeight: 900, color: day === 16 ? 'var(--p, #7c3aed)' : 'var(--t, #111827)' }}>{day}</div>}
+                    {matching.slice(0, 3).map(patient => (
+                      <span key={patient.id} title={patient.name} style={{
+                        height: 5,
+                        borderRadius: 999,
+                        background: patient.color,
+                        opacity: 0.86,
+                      }} />
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
+              {visiblePatients.map(patient => (
+                <div key={patient.id} style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) auto auto',
+                  gap: isMobile ? 4 : 12,
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  borderRadius: 14,
+                  background: 'var(--sf, #ffffff)',
+                  border: '1px solid var(--br, #e5e7eb)',
+                  fontSize: 12,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 900, color: 'var(--t, #111827)' }}>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: patient.color }} />
+                    {patient.name}
+                  </div>
+                  <div style={{ color: 'var(--t-s, #6b7280)', fontWeight: 800 }}>Inicio: {patient.start}</div>
+                  <div style={{ color: 'var(--t-s, #6b7280)', fontWeight: 800 }}>Fin: {patient.end}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfilePage({ userName, userRole }: { userName: string; userRole: string }) {
+  return (
+    <div style={{ display: 'grid', gap: 18, maxWidth: 980 }}>
+      <section style={{
+        display: 'grid',
+        gridTemplateColumns: 'auto minmax(0, 1fr)',
+        gap: 18,
+        alignItems: 'center',
+        padding: 24,
+        borderRadius: 24,
+        background: 'var(--sf, #ffffff)',
+        border: '1px solid var(--br, #e5e7eb)',
+        boxShadow: '0 18px 50px rgba(15,23,42,0.06)',
+      }}>
+        <div style={{
+          width: 82,
+          height: 82,
+          borderRadius: 24,
+          background: 'linear-gradient(135deg, var(--p, #7c3aed), #0ea5e9)',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 32,
+          fontWeight: 900,
+        }}>
+          {userName.slice(0, 1).toUpperCase()}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 28, lineHeight: 1.05, fontWeight: 900, color: 'var(--t, #111827)', letterSpacing: '-0.02em' }}>{userName}</div>
+          <div style={{ marginTop: 8, fontSize: 14, color: 'var(--t-s, #6b7280)', fontWeight: 700 }}>{userRole}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+            {['Sesión activa', '2FA pendiente', 'Equipo medicina nuclear'].map(item => (
+              <span key={item} style={{
+                padding: '7px 10px',
+                borderRadius: 999,
+                background: 'color-mix(in srgb, var(--p, #7c3aed) 8%, #ffffff)',
+                border: '1px solid color-mix(in srgb, var(--p, #7c3aed) 18%, transparent)',
+                color: 'var(--p, #7c3aed)',
+                fontSize: 11,
+                fontWeight: 900,
+              }}>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gap: 14,
+      }}>
+        {[
+          ['Datos personales', 'Nombre, rol, email institucional y preferencias de contacto.'],
+          ['Seguridad', 'Contraseña, verificación en dos pasos y sesiones iniciadas.'],
+          ['Permisos', 'Alcance clínico, módulos habilitados y trazabilidad.'],
+        ].map(([title, text]) => (
+          <div key={title} style={{
+            padding: 20,
+            borderRadius: 20,
+            background: 'var(--sf, #ffffff)',
+            border: '1px solid var(--br, #e5e7eb)',
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--t, #111827)' }}>{title}</div>
+            <p style={{ margin: '10px 0 0', fontSize: 13, lineHeight: 1.5, color: 'var(--t-s, #6b7280)' }}>{text}</p>
+          </div>
+        ))}
+      </section>
+    </div>
+  );
+}
+
 function roundToggleStyle(offset: number, side: 'left' | 'right'): React.CSSProperties {
   return {
     position: 'absolute',
@@ -1381,20 +1909,6 @@ function roundToggleStyle(offset: number, side: 'left' | 'right'): React.CSSProp
     outline: 'none',
   };
 }
-
-const circleButtonStyle: React.CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: '50%',
-  background: 'var(--sf, #ffffff)',
-  border: '1px solid var(--br, transparent)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: 'var(--t, #111827)',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-  cursor: 'pointer',
-};
 
 const plainIconButtonStyle: React.CSSProperties = {
   width: 32,
