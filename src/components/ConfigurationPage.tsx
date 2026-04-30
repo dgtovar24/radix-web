@@ -454,19 +454,23 @@ function SectionCard({ icon: Icon, title, subtitle, children }: { icon: typeof P
 }
 
 function TextField({ label, value, onChange, placeholder, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string }) {
+  const id = fieldId(label);
+
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} style={inputStyle} />
+      <label htmlFor={id} style={labelStyle}>{label}</label>
+      <input id={id} type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} style={inputStyle} />
     </div>
   );
 }
 
 function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
+  const id = fieldId(label);
+
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
-      <select value={value} onChange={(event) => onChange(event.target.value)} style={inputStyle}>
+      <label htmlFor={id} style={labelStyle}>{label}</label>
+      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} style={inputStyle}>
         {options.map(option => <option key={option} value={option}>{option}</option>)}
       </select>
     </div>
@@ -475,7 +479,7 @@ function SelectField({ label, value, onChange, options }: { label: string; value
 
 function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
   return (
-    <button type="button" onClick={() => onChange(!checked)} style={{
+    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} style={{
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -506,6 +510,15 @@ function ToggleField({ label, checked, onChange }: { label: string; checked: boo
       </span>
     </button>
   );
+}
+
+function fieldId(label: string) {
+  return `setting-${label
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')}`;
 }
 
 function SegmentedControl({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {

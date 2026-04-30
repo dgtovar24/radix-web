@@ -9,6 +9,11 @@ export default defineConfig({
     mode: 'standalone',
   }),
   integrations: [react(), tailwind()],
+  vite: {
+    optimizeDeps: {
+      force: true,
+    },
+  },
   security: {
     checkOrigin: false,
   },
