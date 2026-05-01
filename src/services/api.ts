@@ -168,21 +168,14 @@ export const settings = {
     fetchJson<SettingsResponse>(`/settings/patient/${patientId}`, { method: 'PUT', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } }),
 };
 
-// Global system settings
-export const systemSettings = {
-  get: () => fetchJson<SystemSettingsResponse>('/system-settings'),
-  update: (data: SystemSettingsResponse) =>
-    fetchJson<SystemSettingsResponse>('/system-settings', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  testSmtp: (email: string) =>
-    fetchJson<{ sent: boolean; message: string }>('/system-settings/smtp/test', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-      headers: { 'Content-Type': 'application/json' },
-    }),
+// WebSocket chat — use WS /ws/chat and WS /ws/rix endpoints
+export const chat = {
+  getWsUrl: () => {
+    const wsHost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'localhost:8080' : 'api.raddix.pro';
+    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return { chat: `${protocol}//${wsHost}/ws/chat`, rix: `${protocol}//${wsHost}/ws/rix` };
+  },
 };
 
 // OAuth clients / API credentials
@@ -198,40 +191,6 @@ export const oauthClients = {
     fetchJson<TokenResponse>('/auth/token', {
       method: 'POST',
       body: JSON.stringify(data),
-      headers: { 'Content-Type': 'application/json' },
-    }),
-};
-
-// Internal chat
-export const internalChat = {
-  getDirectory: () => fetchJson<InternalChatUser[]>('/internal-chat/users'),
-  getConversations: (type?: 'direct' | 'group') =>
-    fetchJson<InternalConversation[]>('/internal-chat/conversations', { params: type ? { type } : undefined }),
-  getMessages: (conversationId: string | number) =>
-    fetchJson<InternalMessage[]>(`/internal-chat/conversations/${conversationId}/messages`),
-  sendMessage: (conversationId: string | number, messageText: string) =>
-    fetchJson<InternalMessage>(`/internal-chat/conversations/${conversationId}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ messageText }),
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  createGroup: (data: { title: string; participantIds: Array<string | number> }) =>
-    fetchJson<InternalConversation>('/internal-chat/conversations', {
-      method: 'POST',
-      body: JSON.stringify({ ...data, type: 'group' }),
-      headers: { 'Content-Type': 'application/json' },
-    }),
-};
-
-// Rix assistant
-export const rix = {
-  getConversations: () => fetchJson<RixConversation[]>('/rix/conversations'),
-  getGroups: () => fetchJson<RixGroup[]>('/rix/group-conversations'),
-  getDoctors: () => fetchJson<RixDoctor[]>('/rix/doctors'),
-  sendMessage: (conversationId: string | number | null, messageText: string, participantIds: Array<string | number> = []) =>
-    fetchJson<RixMessage>('/rix/messages', {
-      method: 'POST',
-      body: JSON.stringify({ conversationId, messageText, participantIds }),
       headers: { 'Content-Type': 'application/json' },
     }),
 };
@@ -320,16 +279,6 @@ export interface SettingsResponse {
   notificationsEnabled: boolean; updatedAt: string;
 }
 
-export interface SystemSettingsResponse {
-  smtp?: Record<string, string | boolean>;
-  ai?: Record<string, string | boolean>;
-  security?: Record<string, string | boolean>;
-  organization?: Record<string, string | boolean>;
-  notifications?: Record<string, string | boolean>;
-  integrations?: Record<string, string | boolean>;
-  dataSettings?: Record<string, string | boolean>;
-}
-
 export interface OAuthClient {
   id: number; clientId: string; clientSecret: string; clientName: string;
   grantType: string; scopes: string; isActive: boolean; fkUserId?: number;
@@ -339,36 +288,6 @@ export interface OAuthClient {
 export interface TokenResponse {
   accessToken: string; tokenType: string; expiresIn: number; scope: string;
   patientId?: number; patientName?: string; familyAccessCode?: string;
-}
-
-export interface InternalChatUser {
-  id: string | number; name: string; role?: string; status?: string; avatarUrl?: string;
-}
-
-export interface InternalConversation {
-  id: string | number; title: string; meta?: string; excerpt?: string;
-  type?: 'direct' | 'group'; participantsCount?: number;
-}
-
-export interface InternalMessage {
-  id: string | number; senderName: string; senderAvatarUrl?: string; senderAvatarId?: string | number;
-  messageText: string; sentAt: string; online?: boolean;
-}
-
-export interface RixConversation {
-  id: string | number; title: string; meta?: string; excerpt?: string;
-}
-
-export interface RixGroup {
-  id: string | number; title: string; meta?: string; excerpt?: string; participantCount?: number;
-}
-
-export interface RixDoctor {
-  id: string | number; name: string; specialty?: string;
-}
-
-export interface RixMessage {
-  id: string | number; role: 'user' | 'assistant' | 'system'; messageText: string; sentAt: string;
 }
 
 export interface Isotope {

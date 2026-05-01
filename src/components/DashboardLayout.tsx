@@ -5,17 +5,9 @@ import ThemeProvider from './ThemeProvider';
 import ConfigurationPage from './ConfigurationPage';
 import RadixLogo from './RadixLogo';
 import {
-  internalChat,
   patients,
-  rix,
-  treatments,
   users,
-  type InternalChatUser,
-  type InternalConversation,
-  type InternalMessage,
-  type RixConversation,
-  type RixDoctor,
-  type RixGroup,
+  doctors,
   type User as ApiUser,
 } from '../services/api';
 import {
@@ -907,26 +899,16 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
     let active = true;
     const loadChatData = async () => {
       try {
-        const directory = await internalChat.getDirectory().catch(async () => {
-          const apiUsers = await users.getAll();
-          return apiUsers.map((user) => ({
-            id: user.id,
-            name: `${user.firstName} ${user.lastName}`.trim() || user.email,
-            role: user.specialty || user.role,
-            status: user.role,
-          }));
-        });
-        const [direct, group, messages] = await Promise.all([
-          internalChat.getConversations('direct').catch(() => []),
-          internalChat.getConversations('group').catch(() => []),
-          internalChat.getMessages('current').catch(() => []),
-        ]);
+        const apiUsers = await users.getAll();
+        const directory = apiUsers.map((user) => ({
+          id: user.id,
+          name: `${user.firstName} ${user.lastName}`.trim() || user.email,
+          role: user.role,
+          status: 'offline',
+        }));
         if (!active) return;
         setDirectoryUsers(directory);
         setSelectedUser((current) => current || directory[0]?.id || '');
-        setDirectChats(direct);
-        setGroupChats(group);
-        setChatMessages(messages);
         setChatStatus('');
       } catch (error) {
         if (active) setChatStatus('No se pudieron cargar los datos del chat interno desde la API.');
@@ -1303,20 +1285,16 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   useEffect(() => {
     let active = true;
     const loadRixData = async () => {
-      const [conversations, groups, doctorList] = await Promise.all([
-        rix.getConversations().catch(() => []),
-        rix.getGroups().catch(() => []),
-        rix.getDoctors().catch(async () => {
-          const apiUsers = await users.getAll().catch(() => []);
-          return apiUsers
-            .filter((user) => ['admin', 'facultativo', 'doctor'].includes(user.role.toLowerCase()))
-            .map((user) => ({
-              id: user.id,
-              name: `${user.firstName} ${user.lastName}`.trim() || user.email,
-              specialty: user.specialty || user.role,
-            }));
-        }),
-      ]);
+      const apiUsers = await users.getAll().catch(() => []);
+      const doctorList = apiUsers
+        .filter((user) => ['admin', 'facultativo', 'doctor', 'Doctor'].includes(user.role))
+        .map((user) => ({
+          id: user.id,
+          name: `${user.firstName} ${user.lastName}`.trim() || user.email,
+          specialty: user.specialty || user.role,
+        }));
+      const conversations = previousRixChats;
+      const groups = [];
       if (!active) return;
       setPreviousRixChats(conversations);
       setRixGroups(groups);
@@ -1338,13 +1316,8 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     setShowHistoryPanel(false);
     setShowGroupsPanel(false);
     if (!rixPrompt.trim()) return;
-    try {
-      await rix.sendMessage(activeRixChat || null, rixPrompt.trim(), selectedDoctors);
-      setRixPrompt('');
-      setRixSubmitStatus('');
-    } catch (error) {
-      setRixSubmitStatus('No se pudo enviar el mensaje porque el endpoint de Rix no respondió.');
-    }
+    setRixPrompt('');
+    setRixSubmitStatus('');
   };
 
   return (

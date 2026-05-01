@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { COLOR_DEFINITIONS } from '../data/palettes';
-import { oauthClients, systemSettings, type OAuthClient, type SystemSettingsResponse, type TokenResponse } from '../services/api';
+import { oauthClients, type OAuthClient, type TokenResponse } from '../services/api';
 
 type SettingsTab = 'appearance' | 'smtp' | 'ai' | 'security' | 'organization' | 'notifications' | 'integrations' | 'apiKeys' | 'data';
 
