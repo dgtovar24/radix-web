@@ -17,12 +17,6 @@ export default function FileUpload({ onUpload, accept = 'image/*,.pdf', maxSizeM
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const API_BASE = typeof window !== 'undefined'
-    ? window.location.hostname === 'localhost'
-      ? 'http://localhost:8080/v2'
-      : 'https://api.raddix.pro/v1'
-    : '';
-
   const uploadFile = async (file: File) => {
     if (file.size > maxSizeMB * 1024 * 1024) {
       setError(`El archivo excede el límite de ${maxSizeMB}MB`);
@@ -44,11 +38,9 @@ export default function FileUpload({ onUpload, accept = 'image/*,.pdf', maxSizeM
       const formData = new FormData();
       formData.append('file', file);
 
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE}/api/upload`, {
+      const res = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (!res.ok) {
@@ -57,7 +49,7 @@ export default function FileUpload({ onUpload, accept = 'image/*,.pdf', maxSizeM
       }
 
       const data = await res.json();
-      const fullUrl = `${API_BASE}${data.url}`;
+      const fullUrl = data.url;
       setUploadedUrl(fullUrl);
       onUpload?.(fullUrl);
     } catch (err) {

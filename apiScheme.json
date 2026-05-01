@@ -1,7 +1,7 @@
 {
   "api": "Radix API v2",
   "basePath": "/v2",
-  "description": "Complete API Schema with expected POST bodies and GET responses for all 29 REST endpoints",
+  "description": "Radix API schema consumed by the Astro frontend. Existing endpoints are listed with expected request/response shapes; missing backend endpoints are documented for frontend API-only operation.",
   "categories": {
     "auth": "Authentication and user registration",
     "patients": "Patient management",
@@ -10,7 +10,11 @@
     "alerts": "Doctor alerts and notifications",
     "watch": "Smartwatch data ingestion and metrics",
     "isotopes": "Radioisotope catalog",
-    "dashboard": "Aggregated statistics"
+    "dashboard": "Aggregated statistics",
+    "oauthClients": "OAuth/API client credentials",
+    "internalChat": "Internal direct and group chat",
+    "rix": "Rix AI assistant conversations",
+    "systemSettings": "Global configuration for SMTP, AI model, security and organization"
   },
   "endpoints": [
     {
@@ -335,7 +339,9 @@
         "status": "operational",
         "timestamp": "string (ISO datetime)",
         "docs": "/v2/docs",
-        "endpoints": ["array of endpoint paths"]
+        "endpoints": [
+          "array of endpoint paths"
+        ]
       }
     },
     {
@@ -343,6 +349,218 @@
       "method": "GET",
       "description": "Self-documenting API schema in JSON",
       "response": "API documentation object"
+    },
+    {
+      "path": "/api/users/{id}",
+      "method": "GET",
+      "description": "Get user by ID for profile and administration views",
+      "response": {
+        "id": "integer",
+        "firstName": "string",
+        "lastName": "string",
+        "email": "string",
+        "role": "string",
+        "phone": "string optional",
+        "licenseNumber": "string optional",
+        "specialty": "string optional",
+        "createdAt": "string ISO datetime optional"
+      }
+    },
+    {
+      "path": "/api/users/{id}",
+      "method": "PUT",
+      "description": "Update user profile fields; profile password reset sends password in this request",
+      "request": {
+        "firstName": "string optional",
+        "lastName": "string optional",
+        "email": "string optional",
+        "phone": "string optional",
+        "licenseNumber": "string optional",
+        "specialty": "string optional",
+        "role": "string optional",
+        "password": "string optional"
+      },
+      "response": "User object"
+    },
+    {
+      "path": "/api/oauth-clients",
+      "method": "GET",
+      "description": "List OAuth/API clients for API credentials settings",
+      "response": [
+        {
+          "id": "integer",
+          "clientId": "string",
+          "clientSecret": "string",
+          "clientName": "string",
+          "grantType": "string",
+          "scopes": "string",
+          "isActive": "boolean",
+          "createdAt": "string ISO datetime optional",
+          "expiresAt": "string ISO datetime optional"
+        }
+      ]
+    },
+    {
+      "path": "/api/oauth-clients",
+      "method": "POST",
+      "description": "Create OAuth/API client credentials",
+      "request": {
+        "clientId": "string",
+        "clientSecret": "string",
+        "clientName": "string",
+        "grantType": "string",
+        "scopes": "string"
+      },
+      "response": "OAuth client object"
+    },
+    {
+      "path": "/api/internal-chat/users",
+      "method": "GET",
+      "status": "missing",
+      "description": "Directory of users available for internal chat",
+      "response": [
+        {
+          "id": "integer|string",
+          "name": "string",
+          "role": "string",
+          "status": "string",
+          "avatarUrl": "string optional"
+        }
+      ]
+    },
+    {
+      "path": "/api/internal-chat/conversations",
+      "method": "GET",
+      "status": "missing",
+      "description": "List internal direct/group conversations",
+      "query": {
+        "type": "direct|group optional"
+      },
+      "response": [
+        {
+          "id": "integer|string",
+          "title": "string",
+          "meta": "string optional",
+          "excerpt": "string optional",
+          "type": "direct|group",
+          "participantsCount": "integer optional"
+        }
+      ]
+    },
+    {
+      "path": "/api/internal-chat/conversations/{id}/messages",
+      "method": "GET",
+      "status": "missing",
+      "description": "List messages for one internal chat conversation",
+      "response": [
+        {
+          "id": "integer|string",
+          "senderName": "string",
+          "senderAvatarUrl": "string optional",
+          "messageText": "string",
+          "sentAt": "string ISO datetime",
+          "online": "boolean optional"
+        }
+      ]
+    },
+    {
+      "path": "/api/internal-chat/conversations/{id}/messages",
+      "method": "POST",
+      "status": "missing",
+      "description": "Send a message to one internal chat conversation",
+      "request": {
+        "messageText": "string"
+      },
+      "response": "InternalMessage object"
+    },
+    {
+      "path": "/api/rix/conversations",
+      "method": "GET",
+      "status": "missing",
+      "description": "List previous Rix conversations for the current user",
+      "response": [
+        {
+          "id": "integer|string",
+          "title": "string",
+          "meta": "string optional",
+          "excerpt": "string optional"
+        }
+      ]
+    },
+    {
+      "path": "/api/rix/group-conversations",
+      "method": "GET",
+      "status": "missing",
+      "description": "List Rix group conversations shared with doctors",
+      "response": [
+        {
+          "id": "integer|string",
+          "title": "string",
+          "meta": "string optional",
+          "excerpt": "string optional",
+          "participantCount": "integer optional"
+        }
+      ]
+    },
+    {
+      "path": "/api/rix/doctors",
+      "method": "GET",
+      "status": "missing",
+      "description": "List doctors that can be invited to a Rix group chat",
+      "response": [
+        {
+          "id": "integer|string",
+          "name": "string",
+          "specialty": "string optional"
+        }
+      ]
+    },
+    {
+      "path": "/api/rix/messages",
+      "method": "POST",
+      "status": "missing",
+      "description": "Send a Rix prompt with optional doctor participants",
+      "request": {
+        "conversationId": "integer|string|null",
+        "messageText": "string",
+        "participantIds": [
+          "integer|string"
+        ]
+      },
+      "response": {
+        "id": "integer|string",
+        "role": "assistant|user|system",
+        "messageText": "string",
+        "sentAt": "string ISO datetime"
+      }
+    },
+    {
+      "path": "/api/system-settings",
+      "method": "GET",
+      "status": "missing",
+      "description": "Load global SMTP, Rix model, security, organization, notification and integration settings",
+      "response": "SystemSettings object"
+    },
+    {
+      "path": "/api/system-settings",
+      "method": "PUT",
+      "status": "missing",
+      "description": "Persist global SMTP, Rix model, security, organization, notification and integration settings",
+      "request": "SystemSettings object",
+      "response": "SystemSettings object"
+    },
+    {
+      "path": "/api/system-settings/smtp/test",
+      "method": "POST",
+      "status": "missing",
+      "description": "Send a test email using the configured SMTP server",
+      "request": {
+        "email": "string"
+      },
+      "response": {
+        "sent": "boolean",
+        "message": "string"
+      }
     }
   ],
   "websocket": {
@@ -359,5 +577,11 @@
       "isResolved": "boolean",
       "createdAt": "string (ISO datetime)"
     }
+  },
+  "frontendProxy": {
+    "path": "/api/*",
+    "file": "src/pages/api/[...path].ts",
+    "target": "${PUBLIC_API_URL}/api/*",
+    "auth": "Forwards Authorization bearer from radix-user cookie token or id"
   }
 }

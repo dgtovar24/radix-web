@@ -5,6 +5,20 @@ import ThemeProvider from './ThemeProvider';
 import ConfigurationPage from './ConfigurationPage';
 import RadixLogo from './RadixLogo';
 import {
+  internalChat,
+  patients,
+  rix,
+  treatments,
+  users,
+  type InternalChatUser,
+  type InternalConversation,
+  type InternalMessage,
+  type RixConversation,
+  type RixDoctor,
+  type RixGroup,
+  type User as ApiUser,
+} from '../services/api';
+import {
   Activity,
   ArrowUpRight,
   Bell,
@@ -29,6 +43,9 @@ import {
   Shield,
   Smile,
   Sparkles,
+  KeyRound,
+  Save,
+  User,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -37,20 +54,23 @@ interface DashboardLayoutProps {
   children?: React.ReactNode;
   userName: string;
   userRole: string;
+  userId?: number;
+  userEmail?: string;
   configPage?: 'configuration' | 'patients' | 'treatments' | 'devices' | 'rix' | 'profile';
 }
 
 type RightPanelTab = 'chat' | 'rix';
+type CalendarPatient = { id: string; name: string; start: string; end: string; color: string };
 
-export default function DashboardLayout({ children, userName, userRole, configPage }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, userName, userRole, userId, userEmail, configPage }: DashboardLayoutProps) {
   return (
     <ThemeProvider>
-      <DashboardLayoutInner {...{ children, userName, userRole, configPage }} />
+      <DashboardLayoutInner {...{ children, userName, userRole, userId, userEmail, configPage }} />
     </ThemeProvider>
   );
 }
 
-function DashboardLayoutInner({ children, userName, userRole, configPage }: DashboardLayoutProps) {
+function DashboardLayoutInner({ children, userName, userRole, userId, userEmail, configPage }: DashboardLayoutProps) {
   const isRixRoute = configPage === 'rix';
   const [activeRightTab, setActiveRightTab] = useState<RightPanelTab>(isRixRoute ? 'rix' : 'chat');
   const [isRixExpanding, setIsRixExpanding] = useState(isRixRoute);
@@ -58,6 +78,9 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarPatientFilter, setCalendarPatientFilter] = useState('todos');
+  const [calendarPatients, setCalendarPatients] = useState<CalendarPatient[]>([
+    { id: 'todos', name: 'Todos los pacientes', start: '', end: '', color: 'var(--p, #7c3aed)' },
+  ]);
   const [activeNav] = useState(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
@@ -128,6 +151,30 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
       setIsRightSidebarOpen(true);
     }
   }, [isRixRoute]);
+
+  useEffect(() => {
+    Promise.all([patients.getAll(), treatments.getAll()])
+      .then(([patientList, treatmentList]) => {
+        const colors = ['#7c3aed', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#6366f1'];
+        const ranges = patientList.map((patient, index) => {
+          const treatment = treatmentList.find(item => item.patientId === patient.id);
+          const start = treatment?.startDate ? treatment.startDate.slice(0, 10) : '';
+          const end = treatment?.endDate
+            ? treatment.endDate.slice(0, 10)
+            : treatment?.startDate
+              ? new Date(new Date(treatment.startDate).getTime() + (treatment.isolationDays || 0) * 86400000).toISOString().slice(0, 10)
+              : '';
+          return { id: String(patient.id), name: patient.fullName, start, end, color: colors[index % colors.length] };
+        }).filter(patient => patient.start && patient.end);
+        setCalendarPatients([
+          { id: 'todos', name: 'Todos los pacientes', start: '', end: '', color: 'var(--p, #7c3aed)' },
+          ...ranges,
+        ]);
+      })
+      .catch(() => setCalendarPatients([
+        { id: 'todos', name: 'Todos los pacientes', start: '', end: '', color: 'var(--p, #7c3aed)' },
+      ]));
+  }, []);
 
   const launchRix = () => {
     if (typeof window !== 'undefined') {
@@ -355,7 +402,7 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
             </div>
           </div>
 
-          {configPage === 'configuration' ? <ConfigurationPage /> : configPage === 'profile' ? <ProfilePage userName={userName} userRole={userRole} /> : children}
+          {configPage === 'configuration' ? <ConfigurationPage /> : configPage === 'profile' ? <ProfilePage userName={userName} userRole={userRole} userId={userId} userEmail={userEmail} /> : children}
         </main>
       </div>
 
@@ -374,6 +421,7 @@ function DashboardLayoutInner({ children, userName, userRole, configPage }: Dash
 
       <PatientCalendarModal
         open={isCalendarOpen}
+        patients={calendarPatients}
         selectedPatient={calendarPatientFilter}
         onSelectedPatientChange={setCalendarPatientFilter}
         onClose={() => setIsCalendarOpen(false)}
@@ -845,27 +893,53 @@ function RightPanelTabs({
 }
 
 function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
-  const directoryUsers = [
-    { id: 'megan', name: 'Megan Norton', role: 'Oncologia nuclear', status: 'Disponible', img: '47' },
-    { id: 'floyd', name: 'Floyd Miles', role: 'Técnico de turno', status: 'En sala', img: '11' },
-    { id: 'guy', name: 'Guy Hawkins', role: 'Dosimetría', status: 'Disponible', img: '3' },
-    { id: 'kristin', name: 'Kristin Watson', role: 'Seguimiento', status: 'Ocupada', img: '9' },
-  ];
-  const directChats = [
-    { id: 'aislamiento', title: 'Aislamiento I-131', meta: '4 mensajes nuevos', excerpt: 'Revisión de dosis antes del cierre.' },
-    { id: 'reloj', title: 'Sincronización de reloj', meta: '10:18 AM', excerpt: 'Métricas entrando correctamente.' },
-  ];
-  const groupChats = [
-    { id: 'comite', title: 'Comité terapia I-131', meta: '3 médicos', excerpt: 'Rix y equipo clínico revisan evolución.' },
-    { id: 'guardia', title: 'Guardia medicina nuclear', meta: '6 miembros', excerpt: 'Incidencias y continuidad asistencial.' },
-  ];
+  const [directoryUsers, setDirectoryUsers] = useState<InternalChatUser[]>([]);
+  const [directChats, setDirectChats] = useState<InternalConversation[]>([]);
+  const [groupChats, setGroupChats] = useState<InternalConversation[]>([]);
+  const [chatMessages, setChatMessages] = useState<InternalMessage[]>([]);
   const [directoryTab, setDirectoryTab] = useState<'usuarios' | 'chats' | 'grupales'>('usuarios');
   const [query, setQuery] = useState('');
-  const [selectedUser, setSelectedUser] = useState(directoryUsers[0].id);
+  const [selectedUser, setSelectedUser] = useState<string | number>('');
+  const [chatStatus, setChatStatus] = useState('');
+  const [draftMessage, setDraftMessage] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const loadChatData = async () => {
+      try {
+        const directory = await internalChat.getDirectory().catch(async () => {
+          const apiUsers = await users.getAll();
+          return apiUsers.map((user) => ({
+            id: user.id,
+            name: `${user.firstName} ${user.lastName}`.trim() || user.email,
+            role: user.specialty || user.role,
+            status: user.role,
+          }));
+        });
+        const [direct, group, messages] = await Promise.all([
+          internalChat.getConversations('direct').catch(() => []),
+          internalChat.getConversations('group').catch(() => []),
+          internalChat.getMessages('current').catch(() => []),
+        ]);
+        if (!active) return;
+        setDirectoryUsers(directory);
+        setSelectedUser((current) => current || directory[0]?.id || '');
+        setDirectChats(direct);
+        setGroupChats(group);
+        setChatMessages(messages);
+        setChatStatus('');
+      } catch (error) {
+        if (active) setChatStatus('No se pudieron cargar los datos del chat interno desde la API.');
+      }
+    };
+    loadChatData();
+    return () => { active = false; };
+  }, []);
+
   const filteredUsers = directoryUsers.filter(user =>
-    `${user.name} ${user.role}`.toLowerCase().includes(query.toLowerCase())
+    `${user.name} ${user.role || ''}`.toLowerCase().includes(query.toLowerCase())
   );
-  const selectedUserData = directoryUsers.find(user => user.id === selectedUser) || directoryUsers[0];
+  const selectedUserData = directoryUsers.find(user => user.id === selectedUser);
 
   return (
     <>
@@ -972,17 +1046,32 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
                         fontFamily: "'Inter', sans-serif",
                       }}
                     >
-                      <img src={`https://i.pravatar.cc/150?img=${user.img}`} alt={user.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                        <img src={getAvatarUrl(user)} alt={user.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>{user.name}</div>
                         <div style={{ marginTop: 2, fontSize: 11, color: 'var(--t-s, #6b7280)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.role}</div>
                       </div>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: user.status === 'Disponible' ? 'var(--sc, #10b981)' : 'var(--t-s, #6b7280)' }}>{user.status}</span>
+	                      <span style={{ fontSize: 10, fontWeight: 800, color: user.status === 'Disponible' ? 'var(--sc, #10b981)' : 'var(--t-s, #6b7280)' }}>{user.status || 'Usuario'}</span>
                     </button>
                   );
                 })}
               </div>
-              <button type="button" style={{
+	              {filteredUsers.length === 0 && <EmptyInline text={chatStatus || 'No hay usuarios disponibles desde la API.'} />}
+	              <button type="button" disabled={!selectedUserData} onClick={() => {
+                  if (!selectedUserData) return;
+                  setDirectoryTab('chats');
+                  setChatStatus('');
+                  if (chatMessages.length === 0) {
+                    setChatMessages([{
+                      id: `local-welcome-${selectedUserData.id}`,
+                      senderName: selectedUserData.name,
+                      senderAvatarId: selectedUserData.id,
+                      senderAvatarUrl: selectedUserData.avatarUrl,
+                      messageText: 'Conversación iniciada. Escribe un mensaje para continuar.',
+                      sentAt: new Date().toISOString(),
+                    }]);
+                  }
+                }} style={{
                 width: '100%',
                 border: 'none',
                 borderRadius: 14,
@@ -991,17 +1080,18 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
                 color: '#ffffff',
                 fontSize: 12,
                 fontWeight: 900,
-                cursor: 'pointer',
+	                cursor: selectedUserData ? 'pointer' : 'not-allowed',
+	                opacity: selectedUserData ? 1 : 0.55,
                 fontFamily: "'Inter', sans-serif",
               }}>
-                Chatear con {selectedUserData.name}
+	                {selectedUserData ? `Chatear con ${selectedUserData.name}` : 'Selecciona un usuario'}
               </button>
             </>
           )}
 
           {directoryTab !== 'usuarios' && (
             <div style={{ display: 'grid', gap: 8 }}>
-              {(directoryTab === 'chats' ? directChats : groupChats).map(chat => (
+	              {(directoryTab === 'chats' ? directChats : groupChats).map(chat => (
                 <button
                   key={chat.id}
                   type="button"
@@ -1022,7 +1112,10 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
                   </div>
                   <div style={{ marginTop: 6, fontSize: 11, lineHeight: 1.45, color: 'var(--t-s, #6b7280)' }}>{chat.excerpt}</div>
                 </button>
-              ))}
+	              ))}
+	              {(directoryTab === 'chats' ? directChats : groupChats).length === 0 && (
+	                <EmptyInline text={directoryTab === 'chats' ? 'No hay chats directos devueltos por la API.' : 'No hay chats grupales devueltos por la API.'} />
+	              )}
               {directoryTab === 'grupales' && (
                 <button type="button" style={{
                   display: 'inline-flex',
@@ -1054,12 +1147,42 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t-s, #4b5563)' }}>Chat interno</div>
           <div style={{ flex: 1, height: 1, background: 'var(--br, #f3f4f6)' }} />
         </div>
-        <ChatMessage name="Floyd Miles" img="11" time="10:15 AM" text="He actualizado la ficha de aislamiento. Revisa la dosis antes de cerrar turno." />
-        <ChatMessage name="Guy Hawkins" img="3" time="10:18 AM" text="Paciente estable. El reloj ya está sincronizando métricas." online />
-        <ChatMessage name="Kristin Watson" img="9" time="10:21 AM" text="Necesito validar la próxima revisión de radiación." />
+        {chatMessages.map((message) => (
+          <ChatMessage
+            key={message.id}
+            name={message.senderName}
+            img={message.senderAvatarId || message.id}
+            avatarUrl={message.senderAvatarUrl}
+            time={formatTime(message.sentAt)}
+            text={message.messageText}
+            online={message.online}
+          />
+        ))}
+        {chatMessages.length === 0 && <EmptyInline text={chatStatus || 'No hay mensajes cargados desde la API para esta conversación.'} />}
       </div>
 
-      <div style={{ padding: isMobile ? '12px 16px 16px' : '16px 24px 24px' }}>
+      <form onSubmit={async (event) => {
+        event.preventDefault();
+        const text = draftMessage.trim();
+        if (!text) return;
+        const optimisticMessage: InternalMessage = {
+          id: `local-${Date.now()}`,
+          senderName: 'Tú',
+          messageText: text,
+          sentAt: new Date().toISOString(),
+          online: true,
+        };
+        setChatMessages((current) => [...current, optimisticMessage]);
+        setDraftMessage('');
+        setChatStatus('');
+        try {
+          const conversationId = directChats[0]?.id || selectedUser || 'current';
+          const saved = await internalChat.sendMessage(conversationId, text);
+          setChatMessages((current) => current.map((message) => message.id === optimisticMessage.id ? saved : message));
+        } catch {
+          setChatStatus('Mensaje guardado en esta sesión. La API de chat interno aún no confirmó el envío.');
+        }
+      }} style={{ padding: isMobile ? '12px 16px 16px' : '16px 24px 24px' }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -1072,6 +1195,8 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
           <Paperclip size={16} color="var(--t-s)" />
           <input
             type="text"
+            value={draftMessage}
+            onChange={(event) => setDraftMessage(event.target.value)}
             placeholder="Escribe un mensaje"
             style={{
               flex: 1,
@@ -1086,18 +1211,24 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
           />
           <button style={plainIconButtonStyle}><Smile size={18} /></button>
           <button style={plainIconButtonStyle}><Mic size={18} /></button>
+          <button type="submit" disabled={!draftMessage.trim()} style={{
+            ...plainIconButtonStyle,
+            background: draftMessage.trim() ? 'var(--p, #7c3aed)' : 'transparent',
+            color: draftMessage.trim() ? '#ffffff' : 'var(--t-s, #6b7280)',
+            cursor: draftMessage.trim() ? 'pointer' : 'not-allowed',
+          }}><Send size={17} /></button>
         </div>
-      </div>
+      </form>
     </>
   );
 }
 
-function ChatMessage({ name, img, time, text, online }: { name: string; img: string; time: string; text: string; online?: boolean }) {
+function ChatMessage({ name, img, avatarUrl, time, text, online }: { name: string; img: string | number; avatarUrl?: string; time: string; text: string; online?: boolean }) {
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
         <div style={{ position: 'relative' }}>
-          <img src={`https://i.pravatar.cc/150?img=${img}`} alt={name} style={{ width: 36, height: 36, borderRadius: '50%' }} />
+          <img src={avatarUrl || `https://i.pravatar.cc/150?img=${img}`} alt={name} style={{ width: 36, height: 36, borderRadius: '50%' }} />
           {online && <div style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: '50%', background: 'var(--p, #10b981)', border: '2px solid var(--sf, #ffffff)' }} />}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1123,32 +1254,97 @@ function ChatMessage({ name, img, time, text, online }: { name: string; img: str
   );
 }
 
+function EmptyInline({ text }: { text: string }) {
+  return (
+    <div style={{
+      padding: '12px 14px',
+      borderRadius: 14,
+      border: '1px dashed var(--br, #e5e7eb)',
+      background: 'color-mix(in srgb, var(--b, #f8fafc) 82%, #ffffff)',
+      color: 'var(--t-s, #6b7280)',
+      fontSize: 12,
+      lineHeight: 1.45,
+    }}>
+      {text}
+    </div>
+  );
+}
+
+function getAvatarUrl(user: InternalChatUser) {
+  if (user.avatarUrl) return user.avatarUrl;
+  const numeric = Number(user.id);
+  const avatarId = Number.isFinite(numeric) ? (numeric % 70) + 1 : 1;
+  return `https://i.pravatar.cc/150?img=${avatarId}`;
+}
+
+function formatTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
 function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean }) {
-  const previousRixChats = [
-    { id: 'turno', title: 'Resumen del turno', meta: 'Hoy, 12 mensajes', excerpt: 'Alertas pendientes y pacientes con revisión activa.' },
-    { id: 'dosis', title: 'Dudas de dosimetría', meta: 'Ayer, 8 mensajes', excerpt: 'Cálculo de actividad y recomendaciones por tratamiento.' },
-    { id: 'seguimiento', title: 'Seguimiento post-terapia', meta: 'Lun, 5 mensajes', excerpt: 'Síntomas reportados y próximos controles.' },
-  ];
-  const doctors = ['Dra. Elena Ruiz', 'Dr. Marc Vidal', 'Dra. Inés Ferrer', 'Dr. Pablo Torres'];
-  const [activeRixChat, setActiveRixChat] = useState(previousRixChats[0].id);
+  const [previousRixChats, setPreviousRixChats] = useState<RixConversation[]>([]);
+  const [rixGroups, setRixGroups] = useState<RixGroup[]>([]);
+  const [doctors, setDoctors] = useState<RixDoctor[]>([]);
+  const [activeRixChat, setActiveRixChat] = useState<string | number>('');
   const [showGroupComposer, setShowGroupComposer] = useState(false);
   const [isRixConversationOpen, setIsRixConversationOpen] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(true);
   const [showGroupsPanel, setShowGroupsPanel] = useState(true);
-  const [selectedDoctors, setSelectedDoctors] = useState<string[]>(['Dra. Elena Ruiz']);
-  const activeChat = previousRixChats.find(chat => chat.id === activeRixChat) || previousRixChats[0];
-  const selectedDoctorSummary = selectedDoctors.length ? selectedDoctors.join(', ') : 'Sin invitados seleccionados';
+  const [selectedDoctors, setSelectedDoctors] = useState<Array<string | number>>([]);
+  const [rixPrompt, setRixPrompt] = useState('');
+  const [rixSubmitStatus, setRixSubmitStatus] = useState('');
+  const activeChat = previousRixChats.find(chat => chat.id === activeRixChat);
+  const selectedDoctorSummary = selectedDoctors.length
+    ? doctors.filter((doctor) => selectedDoctors.includes(doctor.id)).map((doctor) => doctor.name).join(', ')
+    : 'Sin invitados seleccionados';
 
-  const toggleDoctor = (doctor: string) => {
+  useEffect(() => {
+    let active = true;
+    const loadRixData = async () => {
+      const [conversations, groups, doctorList] = await Promise.all([
+        rix.getConversations().catch(() => []),
+        rix.getGroups().catch(() => []),
+        rix.getDoctors().catch(async () => {
+          const apiUsers = await users.getAll().catch(() => []);
+          return apiUsers
+            .filter((user) => ['admin', 'facultativo', 'doctor'].includes(user.role.toLowerCase()))
+            .map((user) => ({
+              id: user.id,
+              name: `${user.firstName} ${user.lastName}`.trim() || user.email,
+              specialty: user.specialty || user.role,
+            }));
+        }),
+      ]);
+      if (!active) return;
+      setPreviousRixChats(conversations);
+      setRixGroups(groups);
+      setDoctors(doctorList);
+      setActiveRixChat((current) => current || conversations[0]?.id || '');
+    };
+    loadRixData();
+    return () => { active = false; };
+  }, []);
+
+  const toggleDoctor = (doctor: string | number) => {
     setSelectedDoctors((current) => current.includes(doctor)
       ? current.filter(item => item !== doctor)
       : [...current, doctor]);
   };
 
-  const sendRixMessage = () => {
+  const sendRixMessage = async () => {
     setIsRixConversationOpen(true);
     setShowHistoryPanel(false);
     setShowGroupsPanel(false);
+    if (!rixPrompt.trim()) return;
+    try {
+      await rix.sendMessage(activeRixChat || null, rixPrompt.trim(), selectedDoctors);
+      setRixPrompt('');
+      setRixSubmitStatus('');
+    } catch (error) {
+      setRixSubmitStatus('No se pudo enviar el mensaje porque el endpoint de Rix no respondió.');
+    }
   };
 
   return (
@@ -1320,8 +1516,8 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                 <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--t, #111827)' }}>Chats con Rix</div>
                 <Clock size={16} color="var(--t-s, #6b7280)" />
               </div>
-              <div style={{ display: 'grid', gap: 8 }}>
-                {previousRixChats.map(chat => {
+	              <div style={{ display: 'grid', gap: 8 }}>
+	                {previousRixChats.map(chat => {
                   const selected = chat.id === activeRixChat;
                   return (
                     <button
@@ -1346,9 +1542,10 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                       <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.45, color: 'var(--t-s, #6b7280)' }}>{chat.excerpt}</div>
                     </button>
                   );
-                })}
-              </div>
-              <div style={{
+	                })}
+	                {previousRixChats.length === 0 && <EmptyInline text="No hay chats con Rix devueltos por la API." />}
+	              </div>
+	              {activeChat && <div style={{
                 marginTop: 12,
                 padding: 12,
                 borderRadius: 14,
@@ -1358,8 +1555,9 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                 lineHeight: 1.45,
                 color: 'var(--t-s, #6b7280)',
               }}>
-                <strong style={{ color: 'var(--t, #111827)' }}>{activeChat.title}:</strong> {activeChat.excerpt}
-              </div>
+	                <strong style={{ color: 'var(--t, #111827)' }}>{activeChat.title}:</strong> {activeChat.excerpt || 'Sin resumen disponible.'}
+	              </div>
+	              }
                 </div>}
 
                 {showGroupsPanel && <div style={{
@@ -1395,22 +1593,25 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                 </button>
               </div>
 
-              <button type="button" style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: 12,
-                borderRadius: 14,
-                border: '1px solid var(--br, #e5e7eb)',
-                background: 'var(--sf, #ffffff)',
-                cursor: 'pointer',
-                fontFamily: "'Inter', sans-serif",
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--t, #111827)' }}>Comité de terapia I-131</span>
-                  <span style={{ fontSize: 11, color: 'var(--p, #6d32e8)', fontWeight: 800 }}>3 médicos</span>
-                </div>
-                <div style={{ marginTop: 6, fontSize: 12, color: 'var(--t-s, #6b7280)' }}>Revisión compartida con Rix y equipo clínico.</div>
-              </button>
+	              {rixGroups.map((group) => (
+	                <button key={group.id} type="button" style={{
+	                  width: '100%',
+	                  textAlign: 'left',
+	                  padding: 12,
+	                  borderRadius: 14,
+	                  border: '1px solid var(--br, #e5e7eb)',
+	                  background: 'var(--sf, #ffffff)',
+	                  cursor: 'pointer',
+	                  fontFamily: "'Inter', sans-serif",
+	                }}>
+	                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+	                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--t, #111827)' }}>{group.title}</span>
+	                    <span style={{ fontSize: 11, color: 'var(--p, #6d32e8)', fontWeight: 800 }}>{group.meta || `${group.participantCount || 0} médicos`}</span>
+	                  </div>
+	                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--t-s, #6b7280)' }}>{group.excerpt || 'Sesión grupal sin resumen disponible.'}</div>
+	                </button>
+	              ))}
+	              {rixGroups.length === 0 && <EmptyInline text="No hay chats grupales de Rix devueltos por la API." />}
 
               {showGroupComposer && (
                 <div style={{
@@ -1425,13 +1626,13 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                     Agregar invitados
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {doctors.map(doctor => {
-                      const selected = selectedDoctors.includes(doctor);
+	                    {doctors.map(doctor => {
+	                      const selected = selectedDoctors.includes(doctor.id);
                       return (
                         <button
-                          key={doctor}
-                          type="button"
-                          onClick={() => toggleDoctor(doctor)}
+	                          key={doctor.id}
+	                          type="button"
+	                          onClick={() => toggleDoctor(doctor.id)}
                           style={{
                             padding: '8px 10px',
                             borderRadius: 999,
@@ -1443,10 +1644,11 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                             cursor: 'pointer',
                           }}
                         >
-                          {doctor}
-                        </button>
-                      );
-                    })}
+	                          {doctor.name}
+	                        </button>
+	                      );
+	                    })}
+	                    {doctors.length === 0 && <EmptyInline text="No hay médicos disponibles desde la API." />}
                   </div>
                   <div style={{ marginTop: 10, fontSize: 11, color: 'var(--t-s, #6b7280)', lineHeight: 1.45 }}>{selectedDoctorSummary}</div>
                   <button type="button" style={{
@@ -1488,45 +1690,12 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               marginBottom: 14,
               animation: 'rixPanelReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1)',
             }}>
-              <div style={{
-                maxWidth: '72%',
-                padding: '12px 14px',
-                borderRadius: '16px 16px 16px 4px',
-                background: 'var(--b, #f8fafc)',
-                border: '1px solid var(--br, #e5e7eb)',
-                color: 'var(--t, #111827)',
-                fontSize: 13,
-                lineHeight: 1.5,
-              }}>
-                ¿Qué necesitas revisar ahora?
-              </div>
-              <div style={{
-                justifySelf: 'end',
-                maxWidth: '74%',
-                padding: '12px 14px',
-                borderRadius: '16px 16px 4px 16px',
-                background: 'var(--p, #6d32e8)',
-                color: '#ffffff',
-                fontSize: 13,
-                lineHeight: 1.5,
-              }}>
-                Necesito contexto clínico del turno y próximos pasos.
-              </div>
-              <div style={{
-                maxWidth: '78%',
-                padding: '12px 14px',
-                borderRadius: '16px 16px 16px 4px',
-                background: 'color-mix(in srgb, var(--p, #6d32e8) 7%, #ffffff)',
-                border: '1px solid color-mix(in srgb, var(--p, #6d32e8) 18%, transparent)',
-                color: 'var(--t, #111827)',
-                fontSize: 13,
-                lineHeight: 1.5,
-              }}>
-                Perfecto. He plegado el historial y los grupos para dejar más espacio de conversación. Puedes desplegarlos arriba cuando los necesites.
-              </div>
+	              <EmptyInline text="La conversación de Rix se cargará desde la API cuando el backend devuelva mensajes." />
             </div>
           )}
           <textarea
+            value={rixPrompt}
+            onChange={(event) => setRixPrompt(event.target.value)}
             placeholder="Escribe tu consulta para Rix..."
             style={{
               width: '100%',
@@ -1542,7 +1711,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               boxSizing: 'border-box',
             }}
           />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 }}>
+	          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 }}>
             <button type="button" style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1559,7 +1728,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               <Sparkles size={15} />
               Pensar mejor
             </button>
-            <button type="button" aria-label="Enviar mensaje a Rix" onClick={sendRixMessage} style={{
+	            <button type="button" aria-label="Enviar mensaje a Rix" onClick={sendRixMessage} style={{
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1570,11 +1739,12 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               background: 'var(--p, #3b82f6)',
               color: '#ffffff',
               cursor: 'pointer',
-            }}>
-              <Send size={17} />
-            </button>
-          </div>
-        </div>
+	            }}>
+	              <Send size={17} />
+	            </button>
+	          </div>
+	          {rixSubmitStatus && <div style={{ marginTop: 10 }}><EmptyInline text={rixSubmitStatus} /></div>}
+	        </div>
 
         {expanded && !isRixConversationOpen && (
           <div style={{
@@ -1608,22 +1778,16 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   );
 }
 
-const calendarPatients = [
-  { id: 'todos', name: 'Todos los pacientes', start: '', end: '', color: 'var(--p, #7c3aed)' },
-  { id: 'maria', name: 'María González', start: '2023-05-03', end: '2023-05-17', color: '#7c3aed' },
-  { id: 'floyd', name: 'Floyd Miles', start: '2023-05-07', end: '2023-05-21', color: '#0ea5e9' },
-  { id: 'guy', name: 'Guy Hawkins', start: '2023-05-11', end: '2023-05-25', color: '#10b981' },
-  { id: 'kristin', name: 'Kristin Watson', start: '2023-05-15', end: '2023-05-29', color: '#f59e0b' },
-];
-
 function PatientCalendarModal({
   open,
+  patients,
   selectedPatient,
   onSelectedPatientChange,
   onClose,
   isMobile,
 }: {
   open: boolean;
+  patients: CalendarPatient[];
   selectedPatient: string;
   onSelectedPatientChange: (patientId: string) => void;
   onClose: () => void;
@@ -1631,7 +1795,7 @@ function PatientCalendarModal({
 }) {
   if (!open) return null;
 
-  const visiblePatients = calendarPatients.filter(patient => patient.id !== 'todos' && (selectedPatient === 'todos' || patient.id === selectedPatient));
+  const visiblePatients = patients.filter(patient => patient.id !== 'todos' && (selectedPatient === 'todos' || patient.id === selectedPatient));
   const monthDays = Array.from({ length: 35 }, (_, index) => index - 0);
 
   const dateToDay = (value: string) => Number(value.split('-')[2]);
@@ -1680,7 +1844,7 @@ function PatientCalendarModal({
               Calendario de pacientes
             </h2>
             <p style={{ margin: '8px 0 0', color: 'var(--t-s, #6b7280)', fontSize: 13, lineHeight: 1.5 }}>
-              Visualiza inicio y fin de seguimiento por paciente usando datos temporales del frontend.
+              Visualiza inicio y fin de seguimiento por paciente usando pacientes y tratamientos de la API.
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar" style={{
@@ -1706,7 +1870,7 @@ function PatientCalendarModal({
         }}>
           <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
             <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>Filtrar por paciente</div>
-            {calendarPatients.map(patient => {
+            {patients.map(patient => {
               const active = selectedPatient === patient.id;
               return (
                 <button
@@ -1814,12 +1978,83 @@ function PatientCalendarModal({
   );
 }
 
-function ProfilePage({ userName, userRole }: { userName: string; userRole: string }) {
+function ProfilePage({ userName, userRole, userId, userEmail }: { userName: string; userRole: string; userId?: number; userEmail?: string }) {
+  const [profile, setProfile] = useState<ApiUser | null>(null);
+  const [form, setForm] = useState({
+    firstName: userName,
+    lastName: '',
+    email: userEmail || '',
+    phone: '',
+    licenseNumber: '',
+    specialty: '',
+  });
+  const [passwordForm, setPasswordForm] = useState({ current: '', next: '', confirm: '' });
+  const [status, setStatus] = useState('');
+  const [passwordStatus, setPasswordStatus] = useState('');
+
+  useEffect(() => {
+    if (!userId) return;
+    users.getById(userId)
+      .then((data) => {
+        setProfile(data);
+        setForm({
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          licenseNumber: data.licenseNumber || '',
+          specialty: data.specialty || '',
+        });
+      })
+      .catch(() => setStatus('No se pudo cargar el perfil desde la API.'));
+  }, [userId]);
+
+  const saveProfile = async () => {
+    if (!userId) {
+      setStatus('La sesión no tiene un ID de usuario válido.');
+      return;
+    }
+
+    try {
+      const updated = await users.update(userId, form);
+      setProfile(updated);
+      setStatus('Perfil actualizado desde la API.');
+    } catch {
+      setStatus('No se pudo guardar el perfil.');
+    }
+  };
+
+  const resetPassword = async () => {
+    if (!userId) {
+      setPasswordStatus('La sesión no tiene un ID de usuario válido.');
+      return;
+    }
+    if (!passwordForm.next || passwordForm.next.length < 8) {
+      setPasswordStatus('La nueva contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (passwordForm.next !== passwordForm.confirm) {
+      setPasswordStatus('Las contraseñas no coinciden.');
+      return;
+    }
+
+    try {
+      await users.update(userId, { password: passwordForm.next });
+      setPasswordForm({ current: '', next: '', confirm: '' });
+      setPasswordStatus('Contraseña actualizada en la API.');
+    } catch {
+      setPasswordStatus('No se pudo actualizar la contraseña.');
+    }
+  };
+
+  const displayName = profile ? `${profile.firstName} ${profile.lastName}`.trim() : userName;
+  const initials = displayName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase() || 'R';
+
   return (
-    <div style={{ display: 'grid', gap: 18, maxWidth: 980 }}>
+    <div style={{ display: 'grid', gap: 18, maxWidth: 1080 }}>
       <section style={{
         display: 'grid',
-        gridTemplateColumns: 'auto minmax(0, 1fr)',
+        gridTemplateColumns: 'auto minmax(0, 1fr) auto',
         gap: 18,
         alignItems: 'center',
         padding: 24,
@@ -1840,13 +2075,13 @@ function ProfilePage({ userName, userRole }: { userName: string; userRole: strin
           fontSize: 32,
           fontWeight: 900,
         }}>
-          {userName.slice(0, 1).toUpperCase()}
+          {initials}
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 28, lineHeight: 1.05, fontWeight: 900, color: 'var(--t, #111827)', letterSpacing: '-0.02em' }}>{userName}</div>
+          <div style={{ fontSize: 28, lineHeight: 1.05, fontWeight: 900, color: 'var(--t, #111827)', letterSpacing: '-0.02em' }}>{displayName}</div>
           <div style={{ marginTop: 8, fontSize: 14, color: 'var(--t-s, #6b7280)', fontWeight: 700 }}>{userRole}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-            {['Sesión activa', '2FA pendiente', 'Equipo medicina nuclear'].map(item => (
+            {['Sesión activa', profile?.email || userEmail || 'Email no disponible', profile?.specialty || 'Especialidad sin asignar'].map(item => (
               <span key={item} style={{
                 padding: '7px 10px',
                 borderRadius: 999,
@@ -1861,29 +2096,135 @@ function ProfilePage({ userName, userRole }: { userName: string; userRole: strin
             ))}
           </div>
         </div>
+        <button type="button" onClick={saveProfile} style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          padding: '11px 16px',
+          borderRadius: 14,
+          border: 'none',
+          background: 'var(--p, #7c3aed)',
+          color: '#ffffff',
+          fontSize: 13,
+          fontWeight: 900,
+          cursor: 'pointer',
+        }}>
+          <Save size={15} />
+          Guardar perfil
+        </button>
       </section>
 
       <section style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
         gap: 14,
       }}>
-        {[
-          ['Datos personales', 'Nombre, rol, email institucional y preferencias de contacto.'],
-          ['Seguridad', 'Contraseña, verificación en dos pasos y sesiones iniciadas.'],
-          ['Permisos', 'Alcance clínico, módulos habilitados y trazabilidad.'],
-        ].map(([title, text]) => (
-          <div key={title} style={{
-            padding: 20,
-            borderRadius: 20,
-            background: 'var(--sf, #ffffff)',
-            border: '1px solid var(--br, #e5e7eb)',
-          }}>
-            <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--t, #111827)' }}>{title}</div>
-            <p style={{ margin: '10px 0 0', fontSize: 13, lineHeight: 1.5, color: 'var(--t-s, #6b7280)' }}>{text}</p>
+        <ProfileCard icon={User} title="Información personal" subtitle="Datos sincronizados con /api/users/{id}.">
+          <ProfileInput label="Nombre" value={form.firstName} onChange={(value) => setForm({ ...form, firstName: value })} />
+          <ProfileInput label="Apellidos" value={form.lastName} onChange={(value) => setForm({ ...form, lastName: value })} />
+          <ProfileInput label="Email institucional" value={form.email} onChange={(value) => setForm({ ...form, email: value })} />
+          <ProfileInput label="Teléfono" value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} />
+        </ProfileCard>
+
+        <ProfileCard icon={Shield} title="Perfil clínico" subtitle="Datos profesionales visibles para administración y coordinación.">
+          <ProfileInput label="Rol" value={profile?.role || userRole} onChange={(value) => setProfile(prev => prev ? { ...prev, role: value } : prev)} disabled />
+          <ProfileInput label="Número de colegiado" value={form.licenseNumber} onChange={(value) => setForm({ ...form, licenseNumber: value })} />
+          <ProfileInput label="Especialidad" value={form.specialty} onChange={(value) => setForm({ ...form, specialty: value })} />
+          <div style={{ padding: 12, borderRadius: 14, background: 'var(--b, #f8fafc)', color: 'var(--t-s, #6b7280)', fontSize: 12, lineHeight: 1.45 }}>
+            La pertenencia a departamentos y pacientes asignados se gestiona desde Usuarios.
           </div>
-        ))}
+        </ProfileCard>
+
+        <ProfileCard icon={KeyRound} title="Seguridad" subtitle="Restablece tu contraseña sin permitir eliminar la cuenta.">
+          <ProfileInput label="Contraseña actual" type="password" value={passwordForm.current} onChange={(value) => setPasswordForm({ ...passwordForm, current: value })} />
+          <ProfileInput label="Nueva contraseña" type="password" value={passwordForm.next} onChange={(value) => setPasswordForm({ ...passwordForm, next: value })} />
+          <ProfileInput label="Confirmar contraseña" type="password" value={passwordForm.confirm} onChange={(value) => setPasswordForm({ ...passwordForm, confirm: value })} />
+          <button type="button" onClick={resetPassword} style={{
+            padding: '11px 14px',
+            borderRadius: 14,
+            border: 'none',
+            background: 'var(--t, #111827)',
+            color: '#ffffff',
+            fontSize: 13,
+            fontWeight: 900,
+            cursor: 'pointer',
+          }}>
+            Resetear contraseña
+          </button>
+          <div style={{ padding: 12, borderRadius: 14, background: 'rgba(239,68,68,0.08)', color: '#b91c1c', fontSize: 12, fontWeight: 800 }}>
+            La eliminación de cuenta no está disponible desde Mi perfil.
+          </div>
+        </ProfileCard>
+
+        <ProfileCard icon={Activity} title="Actividad y sesión" subtitle="Resumen de información recibida desde la sesión y la API.">
+          <InfoLine label="ID de usuario" value={String(userId || profile?.id || 'No disponible')} />
+          <InfoLine label="Creado" value={profile?.createdAt ? new Date(profile.createdAt).toLocaleString('es-ES') : 'No disponible'} />
+          <InfoLine label="Email" value={profile?.email || userEmail || 'No disponible'} />
+          <InfoLine label="Estado" value="Cuenta activa" />
+          {(status || passwordStatus) && (
+            <div style={{ padding: 12, borderRadius: 14, background: 'color-mix(in srgb, var(--p, #7c3aed) 8%, #ffffff)', color: 'var(--p, #7c3aed)', fontSize: 12, fontWeight: 900 }}>
+              {status || passwordStatus}
+            </div>
+          )}
+        </ProfileCard>
       </section>
+    </div>
+  );
+}
+
+function ProfileCard({ icon: Icon, title, subtitle, children }: { icon: typeof User; title: string; subtitle: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      display: 'grid',
+      gap: 12,
+      alignContent: 'start',
+      padding: 20,
+      borderRadius: 20,
+      background: 'var(--sf, #ffffff)',
+      border: '1px solid var(--br, #e5e7eb)',
+      boxShadow: '0 14px 40px rgba(15,23,42,0.05)',
+    }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ width: 36, height: 36, borderRadius: 12, background: 'color-mix(in srgb, var(--p, #7c3aed) 9%, #ffffff)', color: 'var(--p, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon size={17} />
+        </div>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--t, #111827)' }}>{title}</div>
+          <p style={{ margin: '5px 0 0', fontSize: 12, lineHeight: 1.45, color: 'var(--t-s, #6b7280)' }}>{subtitle}</p>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ProfileInput({ label, value, onChange, type = 'text', disabled = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; disabled?: boolean }) {
+  const id = `profile-${label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')}`;
+  return (
+    <div>
+      <label htmlFor={id} style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 900, color: 'var(--t-s, #6b7280)' }}>{label}</label>
+      <input id={id} type={type} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} style={{
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '11px 12px',
+        borderRadius: 14,
+        border: '1px solid var(--br, #e5e7eb)',
+        background: disabled ? 'var(--b, #f8fafc)' : 'var(--sf, #ffffff)',
+        color: disabled ? 'var(--t-s, #6b7280)' : 'var(--t, #111827)',
+        fontSize: 13,
+        fontWeight: 700,
+        outline: 'none',
+      }} />
+    </div>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--br, #e5e7eb)' }}>
+      <span style={{ color: 'var(--t-s, #6b7280)', fontSize: 12, fontWeight: 800 }}>{label}</span>
+      <span style={{ color: 'var(--t, #111827)', fontSize: 12, fontWeight: 900, textAlign: 'right' }}>{value}</span>
     </div>
   );
 }

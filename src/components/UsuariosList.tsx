@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, MoreVertical, Mail, User, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
-import { users, type User } from '../services/api';
+import { Search, Plus, MoreVertical, Mail, User as UserIcon, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { users, type User as ApiUser } from '../services/api';
 
 export default function UsuariosList() {
-  const [userList, setUserList] = useState<User[]>([]);
+  const [userList, setUserList] = useState<ApiUser[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +49,7 @@ export default function UsuariosList() {
         <div style={{ width: 1, height: 40, background: 'var(--br)' }} />
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--b)', border: '1px solid var(--br)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--s)' }}>
-            <User size={20} strokeWidth={2} />
+            <UserIcon size={20} strokeWidth={2} />
           </div>
           <div>
             <div style={{ fontSize: 14, color: 'var(--t-s)' }}>Admins</div>

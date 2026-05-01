@@ -85,7 +85,7 @@ export default function PatientList() {
       </div>
 
       {/* Table List */}
-      <div style={{
+      <div className="responsive-table-card" style={{
         background: 'var(--sf)',
         borderRadius: 20,
         border: '1px solid var(--br)',
@@ -126,7 +126,7 @@ export default function PatientList() {
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--b)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <td style={{ padding: '20px 24px' }}>
+                  <td data-label="Nombre" style={{ padding: '20px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <div style={{
                         width: 40, height: 40, borderRadius: '50%', background: 'var(--p)',
@@ -145,7 +145,7 @@ export default function PatientList() {
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '20px 24px' }}>
+                  <td data-label="Contacto" style={{ padding: '20px 24px' }}>
                     {patient.phone ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--t)' }}>
                         <Phone size={14} style={{ color: 'var(--t-s)' }} />
@@ -153,7 +153,7 @@ export default function PatientList() {
                       </div>
                     ) : <span style={{ color: 'var(--t-s)' }}>—</span>}
                   </td>
-                  <td style={{ padding: '20px 24px' }}>
+                  <td data-label="Dirección" style={{ padding: '20px 24px' }}>
                     {patient.address ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--t-s)' }}>
                         <MapPin size={14} style={{ color: 'var(--t-s)' }} />
@@ -161,7 +161,7 @@ export default function PatientList() {
                       </div>
                     ) : <span style={{ color: 'var(--t-s)' }}>—</span>}
                   </td>
-                  <td style={{ padding: '20px 24px' }}>
+                  <td data-label="Estado" style={{ padding: '20px 24px' }}>
                     <span style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -176,10 +176,10 @@ export default function PatientList() {
                       {patient.isActive ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td style={{ padding: '20px 24px', fontSize: 13, color: 'var(--t-s)' }}>
+                  <td data-label="Registro" style={{ padding: '20px 24px', fontSize: 13, color: 'var(--t-s)' }}>
                     {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('es-ES') : 'N/A'}
                   </td>
-                  <td style={{ padding: '20px 24px', textAlign: 'right' }}>
+                  <td data-label="Acciones" style={{ padding: '20px 24px', textAlign: 'right' }}>
                     <button style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -230,6 +230,38 @@ export default function PatientList() {
           </button>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 1180px) {
+          .responsive-table-card { overflow: visible !important; background: transparent !important; border: none !important; }
+          .responsive-table-card table, .responsive-table-card tbody, .responsive-table-card tr, .responsive-table-card td { display: block; width: 100%; }
+          .responsive-table-card thead { display: none; }
+          .responsive-table-card tbody { display: grid; gap: 12px; }
+          .responsive-table-card tr {
+            border: 1px solid var(--br) !important;
+            border-radius: 18px;
+            background: var(--sf);
+            padding: 14px;
+          }
+          .responsive-table-card td {
+            padding: 8px 4px !important;
+            text-align: left !important;
+            border: none !important;
+          }
+          .responsive-table-card td:not(:first-child) {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+          }
+          .responsive-table-card td:not(:first-child)::before {
+            content: attr(data-label);
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--t-s);
+            text-transform: uppercase;
+          }
+        }
+      `}</style>
     </div>
   );
 }

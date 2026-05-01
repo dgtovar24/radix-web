@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 
-const API_BASE = import.meta.env.PUBLIC_API_URL || 'https://api.raddix.pro/v2';
+const API_BASE = import.meta.env.PUBLIC_API_URL || (import.meta.env.DEV ? 'http://localhost:8080/v2' : 'https://api.raddix.pro/v1');
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   let email = '';
@@ -29,19 +29,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
-  }
-
-  // Hardcoded Admin Check
-  if (email === 'Radix' && password === 'radixelmejor1') {
-    const adminUser = { role: 'ADMIN', firstName: 'Admin Radix', id: 0, token: 'admin-hardcoded-token', email: 'Radix' };
-    cookies.set('radix-user', encodeURIComponent(JSON.stringify(adminUser)), {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 8,
-      secure: import.meta.env.PROD,
-    });
-    return new Response(JSON.stringify({ success: true, user: adminUser }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
 
   const res = await fetch(`${API_BASE}/api/auth/login`, {

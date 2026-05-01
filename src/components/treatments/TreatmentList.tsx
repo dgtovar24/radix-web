@@ -33,7 +33,7 @@ export default function TreatmentList() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32, animation: 'fadeIn 0.35s ease-out' }}>
       {/* Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -41,7 +41,7 @@ export default function TreatmentList() {
           border: '1px solid var(--br)',
           borderRadius: 99,
           padding: '8px 16px',
-          width: 320,
+          width: 'min(100%, 320px)',
         }}>
           <Search size={16} style={{ color: 'var(--t-s)', marginRight: 8 }} />
           <input
@@ -62,11 +62,12 @@ export default function TreatmentList() {
       </div>
 
       {/* Table List */}
-      <div style={{
+      <div className="responsive-table-card" style={{
         background: 'var(--sf)',
         borderRadius: 20,
         border: '1px solid var(--br)',
-        overflow: 'hidden',
+        overflowX: 'auto',
+        overflowY: 'hidden',
       }}>
         {loading ? (
           <div style={{ padding: 48, textAlign: 'center', color: 'var(--t-s)', fontSize: 14 }}>
@@ -98,7 +99,7 @@ export default function TreatmentList() {
                 </tr>
               ) : filteredTreatments.map((treatment, idx) => (
                 <tr key={treatment.id} style={{ borderBottom: idx < filteredTreatments.length - 1 ? '1px solid var(--br)' : 'none' }}>
-                  <td style={{ padding: '20px 24px' }}>
+                  <td data-label="Paciente" style={{ padding: '20px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <div style={{
                         width: 40, height: 40, borderRadius: '12px', background: 'transparent',
@@ -117,7 +118,7 @@ export default function TreatmentList() {
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '20px 24px' }}>
+                  <td data-label="Isótopo" style={{ padding: '20px 24px' }}>
                     <span style={{
                       display: 'inline-flex', padding: '4px 10px', borderRadius: 8,
                       background: 'transparent', border: '1px solid var(--p)', color: 'var(--p)',
@@ -126,21 +127,21 @@ export default function TreatmentList() {
                       {treatment.isotopeName}
                     </span>
                   </td>
-                  <td style={{ padding: '20px 24px' }}>
+                  <td data-label="Dosis Inicial" style={{ padding: '20px 24px' }}>
                     <span style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--t)' }}>
                       {treatment.initialDose.toFixed(2)} mCi
                     </span>
                   </td>
-                  <td style={{ padding: '20px 24px' }}>
+                  <td data-label="Confinamiento" style={{ padding: '20px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--s)' }}>
                       <Clock size={14} />
                       <span style={{ fontWeight: 600 }}>{treatment.isolationDays}</span> días
                     </div>
                   </td>
-                  <td style={{ padding: '20px 24px', fontSize: 13, color: 'var(--t-s)' }}>
+                  <td data-label="Inicio" style={{ padding: '20px 24px', fontSize: 13, color: 'var(--t-s)' }}>
                     {treatment.startDate ? new Date(treatment.startDate).toLocaleDateString('es-ES') : 'N/A'}
                   </td>
-                  <td style={{ padding: '20px 24px' }}>
+                  <td data-label="Estado" style={{ padding: '20px 24px' }}>
                     <span style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -155,7 +156,7 @@ export default function TreatmentList() {
                       {treatment.isActive ? 'Activo' : 'Finalizado'}
                     </span>
                   </td>
-                  <td style={{ padding: '20px 24px', textAlign: 'right' }}>
+                  <td data-label="Acciones" style={{ padding: '20px 24px', textAlign: 'right' }}>
                     <button style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -206,6 +207,38 @@ export default function TreatmentList() {
           </button>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 1180px) {
+          .responsive-table-card { overflow: visible !important; background: transparent !important; border: none !important; }
+          .responsive-table-card table, .responsive-table-card tbody, .responsive-table-card tr, .responsive-table-card td { display: block; width: 100%; }
+          .responsive-table-card thead { display: none; }
+          .responsive-table-card tbody { display: grid; gap: 12px; }
+          .responsive-table-card tr {
+            border: 1px solid var(--br) !important;
+            border-radius: 18px;
+            background: var(--sf);
+            padding: 14px;
+          }
+          .responsive-table-card td {
+            padding: 8px 4px !important;
+            text-align: left !important;
+            border: none !important;
+          }
+          .responsive-table-card td:not(:first-child) {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+          }
+          .responsive-table-card td:not(:first-child)::before {
+            content: attr(data-label);
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--t-s);
+            text-transform: uppercase;
+          }
+        }
+      `}</style>
     </div>
   );
 }

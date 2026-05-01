@@ -7,6 +7,7 @@ import {
   Bot,
   Check,
   Database,
+  KeyRound,
   Link2,
   Mail,
   Palette,
@@ -18,8 +19,9 @@ import {
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { COLOR_DEFINITIONS } from '../data/palettes';
+import { oauthClients, systemSettings, type OAuthClient, type SystemSettingsResponse, type TokenResponse } from '../services/api';
 
-type SettingsTab = 'appearance' | 'smtp' | 'ai' | 'security' | 'organization' | 'notifications' | 'integrations' | 'data';
+type SettingsTab = 'appearance' | 'smtp' | 'ai' | 'security' | 'organization' | 'notifications' | 'integrations' | 'apiKeys' | 'data';
 
 const aiModels = [
   { id: 'gpt-4.1', name: 'GPT-4.1', detail: 'Mayor calidad para razonamiento clínico y explicaciones largas.' },
@@ -37,8 +39,15 @@ const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Palette }> = [
   { id: 'organization', label: 'Organización', icon: Users },
   { id: 'notifications', label: 'Notificaciones', icon: Bell },
   { id: 'integrations', label: 'Integraciones', icon: Link2 },
+  { id: 'apiKeys', label: 'Credenciales API', icon: KeyRound },
   { id: 'data', label: 'Datos', icon: Database },
 ];
+
+function randomCredential(prefix = '') {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return `${prefix}${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+}
 
 export default function ConfigurationPage() {
   const { palette, setPalette, updateColor, resetPalette, presets, isCustom } = useTheme();
@@ -46,18 +55,28 @@ export default function ConfigurationPage() {
   const [appearanceMode, setAppearanceMode] = useState<'presets' | 'customize' | 'export'>('presets');
   const [customColors, setCustomColors] = useState(palette.colors);
   const [savedAt, setSavedAt] = useState('');
+  const [apiClients, setApiClients] = useState<OAuthClient[]>([]);
+  const [apiStatus, setApiStatus] = useState('');
+  const [generatedToken, setGeneratedToken] = useState<TokenResponse | null>(null);
+  const [apiCredentialForm, setApiCredentialForm] = useState(() => ({
+    clientName: 'Integración clínica',
+    clientId: randomCredential('radix_'),
+    clientSecret: randomCredential(),
+    grantType: 'client_credentials',
+    scopes: 'patients:read treatments:read alerts:write settings:write',
+  }));
 
   const [smtp, setSmtp] = useState({
-    enabled: true,
-    host: 'smtp.raddix.pro',
-    port: '587',
-    security: 'STARTTLS',
-    username: 'notificaciones@raddix.pro',
+    enabled: false,
+    host: '',
+    port: '',
+    security: '',
+    username: '',
     password: '',
-    senderName: 'Radix Salud',
-    senderEmail: 'notificaciones@raddix.pro',
-    replyTo: 'soporte@raddix.pro',
-    testEmail: 'admin@radix.local',
+    senderName: '',
+    senderEmail: '',
+    replyTo: '',
+    testEmail: '',
   });
 
   const [ai, setAi] = useState({
@@ -82,11 +101,11 @@ export default function ConfigurationPage() {
   });
 
   const [organization, setOrganization] = useState({
-    clinicName: 'Radix Salud',
+    clinicName: '',
     timezone: 'Europe/Madrid',
     locale: 'es-ES',
-    defaultDepartment: 'Medicina nuclear',
-    patientCodePrefix: 'RAD',
+    defaultDepartment: '',
+    patientCodePrefix: '',
   });
 
   const [notifications, setNotifications] = useState({
@@ -98,7 +117,7 @@ export default function ConfigurationPage() {
   });
 
   const [integrations, setIntegrations] = useState({
-    apiBase: 'https://api.raddix.pro/v2',
+    apiBase: '',
     webhookUrl: '',
     fhirEnabled: false,
     smartwatchSyncMinutes: '5',
@@ -112,20 +131,24 @@ export default function ConfigurationPage() {
   });
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('radix-settings-center');
-      if (!stored) return;
-      const parsed = JSON.parse(stored);
-      if (parsed.smtp) setSmtp(parsed.smtp);
-      if (parsed.ai) setAi(parsed.ai);
-      if (parsed.security) setSecurity(parsed.security);
-      if (parsed.organization) setOrganization(parsed.organization);
-      if (parsed.notifications) setNotifications(parsed.notifications);
-      if (parsed.integrations) setIntegrations(parsed.integrations);
-      if (parsed.dataSettings) setDataSettings(parsed.dataSettings);
-    } catch (error) {
-      console.error('Failed to load settings', error);
-    }
+    systemSettings.get()
+      .then((settings) => {
+        if (settings.smtp) setSmtp((current) => ({ ...current, ...settings.smtp }));
+        if (settings.ai) setAi((current) => ({ ...current, ...settings.ai }));
+        if (settings.security) setSecurity((current) => ({ ...current, ...settings.security }));
+        if (settings.organization) setOrganization((current) => ({ ...current, ...settings.organization }));
+        if (settings.notifications) setNotifications((current) => ({ ...current, ...settings.notifications }));
+        if (settings.integrations) setIntegrations((current) => ({ ...current, ...settings.integrations }));
+        if (settings.dataSettings) setDataSettings((current) => ({ ...current, ...settings.dataSettings }));
+        setSavedAt('Configuración cargada desde API');
+      })
+      .catch(() => setSavedAt('Configuración pendiente de endpoint /api/system-settings'));
+  }, []);
+
+  useEffect(() => {
+    oauthClients.getAll()
+      .then(setApiClients)
+      .catch(() => setApiStatus('No se pudieron cargar las credenciales API.'));
   }, []);
 
   const settingsSnapshot = useMemo(() => ({
@@ -138,9 +161,22 @@ export default function ConfigurationPage() {
     dataSettings,
   }), [smtp, ai, security, organization, notifications, integrations, dataSettings]);
 
-  const persistSettings = () => {
-    localStorage.setItem('radix-settings-center', JSON.stringify(settingsSnapshot));
-    setSavedAt(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
+  const persistSettings = async () => {
+    try {
+      await systemSettings.update(settingsSnapshot as SystemSettingsResponse);
+      setSavedAt(`Guardado ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
+    } catch (error) {
+      setSavedAt('No se pudo guardar: falta /api/system-settings');
+    }
+  };
+
+  const testSmtp = async () => {
+    try {
+      const result = await systemSettings.testSmtp(smtp.testEmail);
+      setSavedAt(result.message || (result.sent ? 'Correo de prueba enviado' : 'No se pudo enviar el correo'));
+    } catch (error) {
+      setSavedAt('No se pudo probar SMTP: falta /api/system-settings/smtp/test');
+    }
   };
 
   const handlePresetSelect = (preset: typeof presets[0]) => {
@@ -159,6 +195,31 @@ export default function ConfigurationPage() {
     });
   };
 
+  const createApiClient = async () => {
+    try {
+      const created = await oauthClients.create(apiCredentialForm);
+      setApiClients((current) => [created, ...current]);
+      setApiStatus('Client ID y secret creados en la API.');
+    } catch {
+      setApiStatus('No se pudo crear el cliente OAuth en la API.');
+    }
+  };
+
+  const requestApiToken = async () => {
+    try {
+      const token = await oauthClients.createToken({
+        grantType: apiCredentialForm.grantType,
+        clientId: apiCredentialForm.clientId,
+        clientSecret: apiCredentialForm.clientSecret,
+        scope: apiCredentialForm.scopes,
+      });
+      setGeneratedToken(token);
+      setApiStatus('Token generado desde /api/auth/token.');
+    } catch {
+      setApiStatus('No se pudo generar el token con estas credenciales.');
+    }
+  };
+
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gap: 22 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
@@ -171,7 +232,7 @@ export default function ConfigurationPage() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {savedAt && <span style={{ fontSize: 12, color: 'var(--t-s, #6b7280)', fontWeight: 700 }}>Guardado {savedAt}</span>}
+          {savedAt && <span style={{ fontSize: 12, color: 'var(--t-s, #6b7280)', fontWeight: 700 }}>{savedAt}</span>}
           {isCustom && (
             <button type="button" onClick={resetPalette} style={secondaryButtonStyle}>
               <RotateCcw size={14} />
@@ -326,7 +387,7 @@ export default function ConfigurationPage() {
               </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button type="button" onClick={persistSettings} style={primaryButtonStyle}><Save size={15} /> Guardar SMTP</button>
-                <button type="button" style={secondaryButtonStyle}><Send size={15} /> Enviar correo de prueba</button>
+                <button type="button" onClick={testSmtp} style={secondaryButtonStyle}><Send size={15} /> Enviar correo de prueba</button>
               </div>
             </SectionCard>
           )}
@@ -408,6 +469,56 @@ export default function ConfigurationPage() {
                 <TextField label="Webhook clínico" value={integrations.webhookUrl} onChange={(value) => setIntegrations({ ...integrations, webhookUrl: value })} placeholder="https://..." />
                 <TextField label="Sincronización reloj (minutos)" value={integrations.smartwatchSyncMinutes} onChange={(value) => setIntegrations({ ...integrations, smartwatchSyncMinutes: value })} />
                 <ToggleField label="Activar interoperabilidad FHIR" checked={integrations.fhirEnabled} onChange={(value) => setIntegrations({ ...integrations, fhirEnabled: value })} />
+              </div>
+            </SectionCard>
+          )}
+
+          {activeTab === 'apiKeys' && (
+            <SectionCard icon={KeyRound} title="Credenciales API" subtitle="Crea client ID, client secret y tokens para consumir la API Radix.">
+              <div style={twoColumnGridStyle}>
+                <TextField label="Nombre del cliente" value={apiCredentialForm.clientName} onChange={(value) => setApiCredentialForm({ ...apiCredentialForm, clientName: value })} />
+                <SelectField label="Grant type" value={apiCredentialForm.grantType} onChange={(value) => setApiCredentialForm({ ...apiCredentialForm, grantType: value })} options={['client_credentials', 'family_access', 'api_access']} />
+                <TextField label="Client ID" value={apiCredentialForm.clientId} onChange={(value) => setApiCredentialForm({ ...apiCredentialForm, clientId: value })} />
+                <TextField label="Client secret" value={apiCredentialForm.clientSecret} onChange={(value) => setApiCredentialForm({ ...apiCredentialForm, clientSecret: value })} />
+                <TextField label="Scopes" value={apiCredentialForm.scopes} onChange={(value) => setApiCredentialForm({ ...apiCredentialForm, scopes: value })} />
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => setApiCredentialForm({
+                  ...apiCredentialForm,
+                  clientId: randomCredential('radix_'),
+                  clientSecret: randomCredential(),
+                })} style={secondaryButtonStyle}>
+                  <RotateCcw size={15} />
+                  Regenerar valores
+                </button>
+                <button type="button" onClick={createApiClient} style={primaryButtonStyle}>
+                  <Save size={15} />
+                  Crear cliente
+                </button>
+                <button type="button" onClick={requestApiToken} style={secondaryButtonStyle}>
+                  <KeyRound size={15} />
+                  Crear token
+                </button>
+              </div>
+              {apiStatus && <div style={{ padding: 12, borderRadius: 14, background: 'color-mix(in srgb, var(--p, #7c3aed) 8%, #ffffff)', color: 'var(--p, #7c3aed)', fontSize: 12, fontWeight: 900 }}>{apiStatus}</div>}
+              {generatedToken && (
+                <pre style={codeBlockStyle}>{JSON.stringify(generatedToken, null, 2)}</pre>
+              )}
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div style={smallTitleStyle}>Clientes existentes</div>
+                {apiClients.length === 0 ? (
+                  <div style={{ padding: 14, borderRadius: 14, border: '1px solid var(--br, #e5e7eb)', color: 'var(--t-s, #6b7280)', fontSize: 12 }}>
+                    La API no devolvió clientes OAuth todavía.
+                  </div>
+                ) : apiClients.map(client => (
+                  <div key={client.id || client.clientId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, padding: 14, borderRadius: 16, border: '1px solid var(--br, #e5e7eb)', background: 'var(--b, #f8fafc)' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--t, #111827)' }}>{client.clientName || client.clientId}</div>
+                      <div style={{ marginTop: 4, fontSize: 11, color: 'var(--t-s, #6b7280)', fontWeight: 800 }}>{client.clientId} · {client.scopes}</div>
+                    </div>
+                    <span style={{ alignSelf: 'center', fontSize: 11, fontWeight: 900, color: client.isActive ? '#10b981' : '#ef4444' }}>{client.isActive ? 'Activo' : 'Inactivo'}</span>
+                  </div>
+                ))}
               </div>
             </SectionCard>
           )}

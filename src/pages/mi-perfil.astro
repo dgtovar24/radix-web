@@ -7,12 +7,16 @@ import '../styles/global.css';
 const userCookie = Astro.cookies.get('radix-user')?.value;
 let userName = 'User';
 let userRole = 'Doctor';
+let userId = 0;
+let userEmail = '';
 
 if (userCookie) {
   try {
     const user = JSON.parse(decodeURIComponent(userCookie));
     userName = user.firstName || user.email || 'User';
     userRole = user.role || 'Doctor';
+    userId = Number(user.id || 0);
+    userEmail = user.email || '';
   } catch (e) {
     console.error('Failed to parse user cookie');
   }
@@ -50,7 +54,7 @@ if (userCookie) {
 </head>
 <body style="background: var(--b, #ffffff);">
   <ThemeProvider client:load>
-    <DashboardLayout client:load userName={userName} userRole={userRole} configPage="profile" />
+    <DashboardLayout client:load userName={userName} userRole={userRole} userId={userId} userEmail={userEmail} configPage="profile" />
   </ThemeProvider>
 </body>
 </html>

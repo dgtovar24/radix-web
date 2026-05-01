@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import { alerts, type Alert } from '../../services/api';
+import { useState, useEffect, useCallback, type CSSProperties } from 'react';
+import { AlertTriangle, CheckCircle, Clock, ExternalLink, MessageCircle, Phone } from 'lucide-react';
+import { alerts, messages, patients, type Alert, type Patient } from '../../services/api';
 
 interface AlertListProps {
   filterPending?: boolean;
@@ -14,6 +14,7 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [patientMap, setPatientMap] = useState<Record<number, Patient>>({});
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -35,6 +36,12 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
   useEffect(() => {
     loadAlerts();
   }, [loadAlerts]);
+
+  useEffect(() => {
+    patients.getAll()
+      .then((list) => setPatientMap(Object.fromEntries(list.map((patient) => [patient.id, patient]))))
+      .catch(() => setPatientMap({}));
+  }, []);
 
   useEffect(() => {
     const wsHost = window.location.hostname === 'localhost' ? 'localhost:8080' : 'api.raddix.pro';
@@ -93,6 +100,17 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
     }
   };
 
+  const handleQuickMessage = async (alert: Alert) => {
+    const text = window.prompt(`Mensaje rápido para ${alert.patientName}`, `Hola ${alert.patientName}, hemos revisado tu alerta. ¿Puedes confirmar cómo te encuentras?`);
+    if (!text?.trim()) return;
+    try {
+      await messages.send({ fkPatientId: alert.patientId, messageText: text.trim() });
+      window.alert('Mensaje enviado al paciente.');
+    } catch {
+      window.alert('No se pudo enviar el mensaje. Revisa la conexión con la API.');
+    }
+  };
+
   if (loading) {
     return <div style={{ padding: 48, textAlign: 'center', color: 'var(--t-s)', fontSize: 14 }}>Cargando alertas...</div>;
   }
@@ -137,6 +155,7 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
               display: 'flex',
               gap: 16,
               alignItems: 'flex-start',
+              flexWrap: 'wrap',
             }}
           >
             <div style={{
@@ -154,7 +173,7 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
               )}
             </div>
 
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <span style={{
                   padding: '2px 8px',
@@ -180,7 +199,7 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
                 {alert.message}
               </p>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: 'var(--t-s)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: 'var(--t-s)', flexWrap: 'wrap' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Clock size={12} />
                   {new Date(alert.createdAt).toLocaleString('es-ES')}
@@ -189,23 +208,49 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
               </div>
             </div>
 
-            {!alert.isResolved && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <button
-                onClick={() => handleResolve(alert.id)}
-                style={{
-                  padding: '8px 16px',
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  color: '#10b981',
-                  border: 'none',
-                  borderRadius: 10,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
+                onClick={() => window.location.href = `/pacientes/${alert.patientId}`}
+                title="Ver paciente"
+                style={alertActionStyle}
               >
-                Resolver
+                <ExternalLink size={15} />
+                Paciente
               </button>
-            )}
+              <button
+                onClick={() => handleQuickMessage(alert)}
+                title="Enviar mensaje al paciente"
+                style={alertActionStyle}
+              >
+                <MessageCircle size={15} />
+                Mensaje
+              </button>
+              <a
+                href={patientMap[alert.patientId]?.phone ? `tel:${patientMap[alert.patientId].phone}` : undefined}
+                title="Llamar al paciente"
+                style={{ ...alertActionStyle, textDecoration: 'none', opacity: patientMap[alert.patientId]?.phone ? 1 : 0.55, pointerEvents: patientMap[alert.patientId]?.phone ? 'auto' : 'none' }}
+              >
+                <Phone size={15} />
+                Llamar
+              </a>
+              {!alert.isResolved && (
+                <button
+                  onClick={() => handleResolve(alert.id)}
+                  style={{
+                    padding: '8px 14px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    color: '#10b981',
+                    border: 'none',
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Resolver
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -216,3 +261,18 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
     </div>
   );
 }
+
+const alertActionStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  padding: '8px 12px',
+  background: 'var(--b)',
+  color: 'var(--t)',
+  border: '1px solid var(--br)',
+  borderRadius: 10,
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: 'pointer',
+};

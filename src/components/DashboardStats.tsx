@@ -128,8 +128,8 @@ export default function DashboardStats() {
       {/* Grid for remaining charts */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))',
-        gap: 24,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+        gap: 18,
       }}>
         {widgetDefinitions.filter(w => w.id !== 'kpi').map(def => {
           if (!def.visible && !isEditing) return null;

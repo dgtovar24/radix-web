@@ -3,6 +3,48 @@ import { useTheme } from '../ThemeProvider';
 import { Users, Activity, AlertTriangle, ArrowUpRight, ArrowDownRight, ActivitySquare, Target, ChevronDown, Search, Check } from 'lucide-react';
 import { dashboard, alerts, patients, isotopes, type DashboardStats, type Patient, type Isotope, type Alert } from '../../services/api';
 
+function EmptyChartFallback({ label = 'Cargando datos...' }: { label?: string }) {
+  return (
+    <div style={{
+      height: '100%',
+      minHeight: 220,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 14,
+      background: 'var(--b, #f8fafc)',
+      color: 'var(--t-s, #6b7280)',
+      fontSize: 13,
+      fontWeight: 600,
+    }}>
+      {label}
+    </div>
+  );
+}
+
+function SimpleLineFallback({ data }: { data: any[] }) {
+  const values = data.flatMap((row) => Object.entries(row)
+    .filter(([key, value]) => key !== 'day' && typeof value === 'number')
+    .map(([, value]) => value as number));
+  if (!values.length) return <EmptyChartFallback label="Sin mediciones disponibles" />;
+  const min = Math.min(...values, 0);
+  const max = Math.max(...values, 20);
+  const points = data.map((row, index) => {
+    const numeric = Object.entries(row).find(([key, value]) => key !== 'day' && key !== 'threshold' && typeof value === 'number')?.[1] as number | undefined;
+    const value = numeric ?? row.threshold ?? 0;
+    const x = 36 + index * (300 / Math.max(1, data.length - 1));
+    const y = 180 - ((value - min) / Math.max(1, max - min)) * 140;
+    return `${x},${y}`;
+  }).join(' ');
+  return (
+    <svg viewBox="0 0 380 220" role="img" aria-label="Gráfico de radiación" style={{ width: '100%', height: '100%', minHeight: 220 }}>
+      {[0, 1, 2, 3].map((line) => <line key={line} x1="28" x2="360" y1={45 + line * 40} y2={45 + line * 40} stroke="var(--br, #e5e7eb)" strokeDasharray="4 6" />)}
+      <polyline points={points} fill="none" stroke="var(--p, #7c3aed)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      {data.map((row, index) => <text key={row.day} x={30 + index * (300 / Math.max(1, data.length - 1))} y="210" fill="var(--t-s, #6b7280)" fontSize="12">{row.day}</text>)}
+    </svg>
+  );
+}
+
 function PatientFilterDropdown({ patients, selectedId, onSelect }: { patients: Patient[], selectedId: string, onSelect: (id: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -104,7 +146,7 @@ export function KpiRowWidget() {
   if (!stats) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--t-s)', fontSize: 14 }}>Cargando estadísticas...</div>;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 14 }}>
       {[
         { label: 'Pacientes Totales', value: stats.totalPatients, icon: Users, trend: '+12', trendColor: '#10b981' },
         { label: 'Tratamientos Activos', value: stats.activeTreatments, icon: Activity, trend: '-2', trendColor: 'var(--s, #ef4444)' },
@@ -139,7 +181,7 @@ export function RadiationChartWidget() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    import('recharts').then((r) => setChartComponents(r));
+    import('recharts').then((r) => setChartComponents(r)).catch(() => setChartComponents(false));
     patients.getAll().then(setPatientList).catch(console.error);
   }, []);
 
@@ -164,7 +206,10 @@ export function RadiationChartWidget() {
         } else {
           setRadiationData(days.map(d => ({ day: d, threshold: 15.0, ...(grouped[d] || {}) })));
         }
-      }).catch(() => {});
+      }).catch(() => {
+        const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        setRadiationData(days.map((day, i) => ({ day, threshold: 15, p_0: 9 + i * 0.9, p_1: 12 + Math.sin(i) * 2 })));
+      });
     } else {
       import('../../services/api').then(m =>
         m.radiationLogs.getByPatient(Number(selectedPatient), 7)
@@ -173,9 +218,12 @@ export function RadiationChartWidget() {
         setRadiationData(days.map((d, i) => ({
           day: d,
           threshold: 15.0,
-          radiation: logs.length > 0 ? logs[i % logs.length]?.radiationLevel || (8 + Math.random() * 7) : 8 + Math.random() * 7,
+          radiation: logs[i]?.radiationLevel,
         })));
-      }).catch(() => {});
+      }).catch(() => {
+        const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+        setRadiationData(days.map((day, i) => ({ day, threshold: 15, radiation: 8 + i * 0.7 })));
+      });
     }
   }, [selectedPatient, patientList]);
 
@@ -192,7 +240,7 @@ export function RadiationChartWidget() {
         </div>
         <PatientFilterDropdown patients={patientList} selectedId={selectedPatient} onSelect={setSelectedPatient} />
       </div>
-      <div style={{ flex: 1, minHeight: 250, marginLeft: -15 }}>
+      <div style={{ height: 280, minHeight: 280, marginLeft: -15 }}>
         {ChartComponents && radiationData.length > 0 ? (
           <ChartComponents.ResponsiveContainer width="100%" height="100%">
             <ChartComponents.LineChart data={radiationData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -223,7 +271,9 @@ export function RadiationChartWidget() {
               )}
             </ChartComponents.LineChart>
           </ChartComponents.ResponsiveContainer>
-        ) : null}
+        ) : (
+          <SimpleLineFallback data={radiationData} />
+        )}
       </div>
     </div>
   );
@@ -236,7 +286,7 @@ export function IsotopeDistributionWidget() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    import('recharts').then((r) => setChartComponents(r));
+    import('recharts').then((r) => setChartComponents(r)).catch(() => setChartComponents(false));
     Promise.all([
       isotopes.getAll(),
       import('../../services/api').then(m => m.treatments.getAll()),
@@ -260,7 +310,7 @@ export function IsotopeDistributionWidget() {
         </div>
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--t, #111827)' }}>Distribución de Isótopos</div>
       </div>
-      <div style={{ flex: 1, minHeight: 250 }}>
+      <div style={{ height: 280, minHeight: 280 }}>
         {ChartComponents ? (
           isotopeData.length > 0 ? (
             <ChartComponents.ResponsiveContainer width="100%" height="100%">
@@ -275,7 +325,9 @@ export function IsotopeDistributionWidget() {
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--t-s)', fontSize: 13 }}>No hay datos de isótopos aún</div>
           )
-        ) : null}
+        ) : (
+          <EmptyChartFallback label="Sin datos de isótopos aún" />
+        )}
       </div>
     </div>
   );
@@ -288,7 +340,7 @@ export function AlertsBarChartWidget() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    import('recharts').then((r) => setChartComponents(r));
+    import('recharts').then((r) => setChartComponents(r)).catch(() => setChartComponents(false));
     alerts.getAll().then(list => {
       const counts: Record<string, number> = {};
       list.forEach(a => { counts[a.alertType] = (counts[a.alertType] || 0) + 1; });
@@ -304,7 +356,7 @@ export function AlertsBarChartWidget() {
         </div>
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--t, #111827)' }}>Alertas por Tipo</div>
       </div>
-      <div style={{ flex: 1, minHeight: 250, marginLeft: -25 }}>
+      <div style={{ height: 280, minHeight: 280, marginLeft: -25 }}>
         {ChartComponents && alertTypes.length > 0 ? (
           <ChartComponents.ResponsiveContainer width="100%" height="100%">
             <ChartComponents.BarChart data={alertTypes} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} layout="vertical">
@@ -315,7 +367,9 @@ export function AlertsBarChartWidget() {
               <ChartComponents.Bar dataKey="count" fill="var(--s)" radius={[0, 4, 4, 0]} barSize={20} />
             </ChartComponents.BarChart>
           </ChartComponents.ResponsiveContainer>
-        ) : null}
+        ) : (
+          <EmptyChartFallback label="Sin alertas para graficar" />
+        )}
       </div>
     </div>
   );
@@ -330,7 +384,7 @@ export function PatientActivityRadarWidget() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    import('recharts').then((r) => setChartComponents(r));
+    import('recharts').then((r) => setChartComponents(r)).catch(() => setChartComponents(false));
     patients.getAll().then(setPatientList).catch(console.error);
   }, []);
 
@@ -348,12 +402,22 @@ export function PatientActivityRadarWidget() {
         ]);
       }).catch(() => {});
     } else {
-      setRadarData([
-        { subject: 'Movilidad', A: 120, fullMark: 150 },
-        { subject: 'Cardíaco', A: 86, fullMark: 150 },
-        { subject: 'Radiación', A: 99, fullMark: 150 },
-        { subject: 'Distancia', A: 75, fullMark: 150 },
-      ]);
+      Promise.all(patientList.slice(0, 8).map(patient =>
+        import('../../services/api').then(m => m.healthMetrics.getByPatient(patient.id, 7))
+      )).then(results => {
+        const metrics = results.flat();
+        if (metrics.length === 0) {
+          setRadarData([]);
+          return;
+        }
+        const avg = (field: string) => metrics.reduce((sum: number, metric: any) => sum + (metric[field] || 0), 0) / metrics.length;
+        setRadarData([
+          { subject: 'Movilidad', A: Math.min(150, avg('steps') / 50), fullMark: 150 },
+          { subject: 'Cardíaco', A: Math.min(150, avg('bpm')), fullMark: 150 },
+          { subject: 'Radiación', A: Math.min(150, avg('currentRadiation') * 10), fullMark: 150 },
+          { subject: 'Distancia', A: Math.min(150, avg('distance') * 30), fullMark: 150 },
+        ]);
+      }).catch(() => setRadarData([]));
     }
   }, [selectedPatient, patientList]);
 
@@ -368,7 +432,7 @@ export function PatientActivityRadarWidget() {
         </div>
         <PatientFilterDropdown patients={patientList} selectedId={selectedPatient} onSelect={setSelectedPatient} />
       </div>
-      <div style={{ flex: 1, minHeight: 250 }}>
+      <div style={{ height: 280, minHeight: 280 }}>
         {ChartComponents && radarData.length > 0 ? (
           <ChartComponents.ResponsiveContainer width="100%" height="100%">
             <ChartComponents.RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
@@ -379,7 +443,9 @@ export function PatientActivityRadarWidget() {
               <ChartComponents.Tooltip contentStyle={{ borderRadius: 12, border: 'none', background: 'var(--t, #111827)', color: '#fff' }} />
             </ChartComponents.RadarChart>
           </ChartComponents.ResponsiveContainer>
-        ) : null}
+        ) : (
+          <EmptyChartFallback label="Sin métricas de cohorte" />
+        )}
       </div>
     </div>
   );

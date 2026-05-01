@@ -33,12 +33,17 @@ export default function PatientDetails({ patientId }: { patientId: string }) {
 
   const loadAll = async () => {
     try {
-      const [p, wm, mets, rads] = await Promise.all([
+      const [patientResult, watchResult, metricsResult, radiationResult] = await Promise.allSettled([
         patients.getById(pid),
-        watch.getLatest(pid).catch(() => null as WatchMetrics | null),
+        watch.getLatest(pid),
         healthMetrics.getByPatient(pid, timeFilter === '24h' ? 1 : timeFilter === '7d' ? 7 : timeFilter === '30d' ? 30 : 14),
         radiationLogs.getByPatient(pid, timeFilter === '24h' ? 1 : timeFilter === '7d' ? 7 : timeFilter === '30d' ? 30 : 14),
       ]);
+
+      const p = patientResult.status === 'fulfilled' ? patientResult.value : null;
+      const wm = watchResult.status === 'fulfilled' ? watchResult.value : null;
+      const mets = metricsResult.status === 'fulfilled' ? metricsResult.value : [];
+      const rads = radiationResult.status === 'fulfilled' ? radiationResult.value : [];
 
       setPatient(p);
       if (wm) {
@@ -46,13 +51,21 @@ export default function PatientDetails({ patientId }: { patientId: string }) {
         setCurrentBpm(wm.bpm || 0);
         setCurrentSteps(wm.steps || 0);
         setCurrentRadiation(wm.currentRadiation || 0);
-        setHeartData(prev => {
-          const next = [...prev.slice(-19), { time: new Date().toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' }), bpm: wm.bpm || 60 + Math.random() * 20 }];
-          while (next.length < 20) next.unshift({ time: new Date().toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' }), bpm: 60 + Math.random() * 20 });
-          return next;
-        });
+        if (wm.bpm) {
+          setHeartData(prev => [
+            ...prev.slice(-19),
+            { time: new Date(wm.recordedAt).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' }), bpm: wm.bpm || 0 },
+          ]);
+        }
       }
       setMetricsList(mets || []);
+      const bpmSeries = (mets || [])
+        .filter((metric) => Boolean(metric.bpm))
+        .map((metric) => ({
+          time: new Date(metric.recordedAt).toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' }),
+          bpm: metric.bpm || 0,
+        }));
+      if (bpmSeries.length) setHeartData(bpmSeries.slice(-20));
       setRadList(rads || []);
     } catch (err) {
       console.error('Error loading patient data', err);
@@ -132,7 +145,7 @@ export default function PatientDetails({ patientId }: { patientId: string }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 }}>
+      <div className="patient-detail-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 1fr) minmax(0, 2fr)', gap: 24 }}>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
@@ -292,6 +305,11 @@ export default function PatientDetails({ patientId }: { patientId: string }) {
           </div>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 1180px) {
+          .patient-detail-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
