@@ -28,6 +28,8 @@ jobs:
             --name radix-web-app \
             --restart unless-stopped \
             --network dokploy-network \
+            -e API_BASE_URL=http://radix-api:9000/v1 \
+            -e PUBLIC_API_URL=https://api.raddix.pro/v1 \
             --label "traefik.enable=true" \
             --label "traefik.http.routers.radix-web.rule=Host(\`raddix.pro\`) || Host(\`www.raddix.pro\`) || Host(\`aiflex.dev\`) || Host(\`www.aiflex.dev\`)" \
             --label "traefik.http.routers.radix-web.entrypoints=web,websecure" \
