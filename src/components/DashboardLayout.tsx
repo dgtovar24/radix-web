@@ -10,6 +10,7 @@ import {
   doctors,
   type User as ApiUser,
 } from '../services/api';
+import { useWebSocketChat, useWebSocketRix } from '../hooks/useWebSocketChat';
 import {
   Activity,
   ArrowUpRight,
@@ -894,6 +895,7 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
   const [selectedUser, setSelectedUser] = useState<string | number>('');
   const [chatStatus, setChatStatus] = useState('');
   const [draftMessage, setDraftMessage] = useState('');
+  const { connected, messages: wsMessages, sendMessage } = useWebSocketChat();
 
   useEffect(() => {
     let active = true;
@@ -1143,27 +1145,24 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
         {chatMessages.length === 0 && <EmptyInline text={chatStatus || 'No hay mensajes cargados desde la API para esta conversación.'} />}
       </div>
 
-      <form onSubmit={async (event) => {
+      <form onSubmit={(event) => {
         event.preventDefault();
         const text = draftMessage.trim();
         if (!text) return;
-        const optimisticMessage: InternalMessage = {
+        const optimisticMessage: any = {
           id: `local-${Date.now()}`,
           senderName: 'Tú',
           messageText: text,
           sentAt: new Date().toISOString(),
           online: true,
         };
-        setChatMessages((current) => [...current, optimisticMessage]);
-        setDraftMessage('');
-        setChatStatus('');
-        try {
-          const conversationId = directChats[0]?.id || selectedUser || 'current';
-          const saved = await internalChat.sendMessage(conversationId, text);
-          setChatMessages((current) => current.map((message) => message.id === optimisticMessage.id ? saved : message));
-        } catch {
-          setChatStatus('Mensaje guardado en esta sesión. La API de chat interno aún no confirmó el envío.');
+        const sent = sendMessage(text, 'Tú');
+        if (sent) {
+          setChatMessages((current) => [...current, optimisticMessage]);
+        } else {
+          setChatStatus('No se pudo enviar. Conecta el chat.');
         }
+        setDraftMessage('');
       }} style={{ padding: isMobile ? '12px 16px 16px' : '16px 24px 24px' }}>
         <div style={{
           display: 'flex',
@@ -1277,6 +1276,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [selectedDoctors, setSelectedDoctors] = useState<Array<string | number>>([]);
   const [rixPrompt, setRixPrompt] = useState('');
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
+  const { sendQuery } = useWebSocketRix();
   const activeChat = previousRixChats.find(chat => chat.id === activeRixChat);
   const selectedDoctorSummary = selectedDoctors.length
     ? doctors.filter((doctor) => selectedDoctors.includes(doctor.id)).map((doctor) => doctor.name).join(', ')
@@ -1311,13 +1311,18 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
       : [...current, doctor]);
   };
 
-  const sendRixMessage = async () => {
+  const sendRixMessage = () => {
     setIsRixConversationOpen(true);
     setShowHistoryPanel(false);
     setShowGroupsPanel(false);
     if (!rixPrompt.trim()) return;
+    const sent = sendQuery(rixPrompt.trim());
+    if (sent) {
+      setRixSubmitStatus('');
+    } else {
+      setRixSubmitStatus('No se pudo enviar. El WebSocket de Rix no está conectado.');
+    }
     setRixPrompt('');
-    setRixSubmitStatus('');
   };
 
   return (
