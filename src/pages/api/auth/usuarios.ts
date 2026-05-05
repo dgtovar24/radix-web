@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 
-const API_BASE = import.meta.env.PUBLIC_API_URL || (import.meta.env.DEV ? 'http://localhost:8080/v2' : 'https://api.raddix.pro/v1');
+const API_BASE = import.meta.env.PUBLIC_API_URL || (import.meta.env.DEV ? 'http://localhost:8080/v2' : 'https://api.raddix.pro/v2');
 
 export const GET: APIRoute = async () => {
   try {

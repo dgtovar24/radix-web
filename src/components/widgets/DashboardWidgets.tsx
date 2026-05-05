@@ -22,6 +22,43 @@ function EmptyChartFallback({ label = 'Cargando datos...' }: { label?: string })
   );
 }
 
+type ChartSize = { width: number; height: number };
+
+function StableChartFrame({ children, label = 'Cargando gráfico...' }: { children: (size: ChartSize) => React.ReactNode; label?: string }) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<ChartSize>({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const node = frameRef.current;
+    if (!node) return;
+
+    const checkSize = () => {
+      const rect = node.getBoundingClientRect();
+      setSize({ width: Math.floor(rect.width), height: Math.floor(rect.height) });
+    };
+
+    checkSize();
+    const observer = new ResizeObserver(checkSize);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={frameRef}
+      style={{
+        width: '100%',
+        minWidth: 0,
+        height: 'clamp(220px, 30vw, 280px)',
+        minHeight: 220,
+        position: 'relative',
+      }}
+    >
+      {size.width > 24 && size.height > 24 ? children(size) : <EmptyChartFallback label={label} />}
+    </div>
+  );
+}
+
 function SimpleLineFallback({ data }: { data: any[] }) {
   const values = data.flatMap((row) => Object.entries(row)
     .filter(([key, value]) => key !== 'day' && typeof value === 'number')
@@ -138,7 +175,7 @@ export function KpiRowWidget() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
-    dashboard.getStats().then(setStats).catch(console.error);
+    dashboard.getStats().then(setStats).catch(() => {});
     const interval = setInterval(() => { dashboard.getStats().then(setStats).catch(() => {}); }, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -182,7 +219,7 @@ export function RadiationChartWidget() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     import('recharts').then((r) => setChartComponents(r)).catch(() => setChartComponents(false));
-    patients.getAll().then(setPatientList).catch(console.error);
+    patients.getAll().then(setPatientList).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -240,10 +277,10 @@ export function RadiationChartWidget() {
         </div>
         <PatientFilterDropdown patients={patientList} selectedId={selectedPatient} onSelect={setSelectedPatient} />
       </div>
-      <div style={{ height: 280, minHeight: 280, marginLeft: -15 }}>
-        {ChartComponents && radiationData.length > 0 ? (
-          <ChartComponents.ResponsiveContainer width="100%" height="100%">
-            <ChartComponents.LineChart data={radiationData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <StableChartFrame>
+        {({ width, height }) => (
+          ChartComponents && radiationData.length > 0 ? (
+            <ChartComponents.LineChart width={width} height={height} data={radiationData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br, #f3f4f6)" vertical={false} />
               <ChartComponents.XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--t-s, #9ca3af)' }} axisLine={false} tickLine={false} tickMargin={10} />
               <ChartComponents.YAxis tick={{ fontSize: 12, fill: 'var(--t-s, #9ca3af)' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v.toFixed(1)}mSv`} />
@@ -258,23 +295,15 @@ export function RadiationChartWidget() {
                     stroke={COLORS[idx]} strokeWidth={1.5} dot={false} activeDot={{ r: 4 }} />
                 ))
               ) : (
-                <ChartComponents.Area type="monotone" dataKey="radiation" name="Radiación" stroke="var(--p)" strokeWidth={3} fill="url(#radGrad)" />
+                <ChartComponents.Line type="monotone" dataKey="radiation" name="Radiación" stroke="var(--p)" strokeWidth={3} dot={false} activeDot={{ r: 4 }} />
               )}
               <ChartComponents.Line type="step" dataKey="threshold" name="Límite" stroke="var(--s)" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-              {selectedPatient !== 'all' && (
-                <defs>
-                  <linearGradient id="radGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--p)" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="var(--p)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-              )}
             </ChartComponents.LineChart>
-          </ChartComponents.ResponsiveContainer>
-        ) : (
-          <SimpleLineFallback data={radiationData} />
+          ) : (
+            <SimpleLineFallback data={radiationData} />
+          )
         )}
-      </div>
+      </StableChartFrame>
     </div>
   );
 }
@@ -297,7 +326,7 @@ export function IsotopeDistributionWidget() {
         if (iso) counts[iso.name] = (counts[iso.name] || 0) + 1;
       });
       setIsotopeData(Object.entries(counts).map(([name, value]) => ({ name, value })));
-    }).catch(console.error);
+    }).catch(() => setIsotopeData([]));
   }, []);
 
   const COLORS = ['var(--p)', 'var(--s)', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6'];
@@ -310,25 +339,25 @@ export function IsotopeDistributionWidget() {
         </div>
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--t, #111827)' }}>Distribución de Isótopos</div>
       </div>
-      <div style={{ height: 280, minHeight: 280 }}>
-        {ChartComponents ? (
+      <StableChartFrame>
+        {({ width, height }) => (
+          ChartComponents ? (
           isotopeData.length > 0 ? (
-            <ChartComponents.ResponsiveContainer width="100%" height="100%">
-              <ChartComponents.PieChart>
+              <ChartComponents.PieChart width={width} height={height}>
                 <ChartComponents.Pie data={isotopeData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
                   {isotopeData.map((_, i) => <ChartComponents.Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </ChartComponents.Pie>
                 <ChartComponents.Tooltip contentStyle={{ borderRadius: 12, border: 'none', background: 'var(--t, #111827)', color: '#fff' }} itemStyle={{ color: '#fff' }} />
                 <ChartComponents.Legend verticalAlign="bottom" height={36} iconType="circle" />
               </ChartComponents.PieChart>
-            </ChartComponents.ResponsiveContainer>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--t-s)', fontSize: 13 }}>No hay datos de isótopos aún</div>
           )
         ) : (
           <EmptyChartFallback label="Sin datos de isótopos aún" />
+        )
         )}
-      </div>
+      </StableChartFrame>
     </div>
   );
 }
@@ -345,7 +374,7 @@ export function AlertsBarChartWidget() {
       const counts: Record<string, number> = {};
       list.forEach(a => { counts[a.alertType] = (counts[a.alertType] || 0) + 1; });
       setAlertTypes(Object.entries(counts).map(([type, count]) => ({ type, count })));
-    }).catch(console.error);
+    }).catch(() => setAlertTypes([]));
   }, []);
 
   return (
@@ -356,21 +385,21 @@ export function AlertsBarChartWidget() {
         </div>
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--t, #111827)' }}>Alertas por Tipo</div>
       </div>
-      <div style={{ height: 280, minHeight: 280, marginLeft: -25 }}>
-        {ChartComponents && alertTypes.length > 0 ? (
-          <ChartComponents.ResponsiveContainer width="100%" height="100%">
-            <ChartComponents.BarChart data={alertTypes} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} layout="vertical">
+      <StableChartFrame>
+        {({ width, height }) => (
+          ChartComponents && alertTypes.length > 0 ? (
+            <ChartComponents.BarChart width={width} height={height} data={alertTypes} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} layout="vertical">
               <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br, #f3f4f6)" horizontal={true} vertical={false} />
               <ChartComponents.XAxis type="number" tick={{ fontSize: 12, fill: 'var(--t-s, #9ca3af)' }} axisLine={false} tickLine={false} />
               <ChartComponents.YAxis dataKey="type" type="category" tick={{ fontSize: 11, fill: 'var(--t-s, #9ca3af)' }} axisLine={false} tickLine={false} width={110} />
               <ChartComponents.Tooltip contentStyle={{ borderRadius: 12, border: 'none', background: 'var(--t, #111827)', color: '#fff' }} itemStyle={{ color: '#fff' }} cursor={{ fill: 'var(--sf, #f8fafc)' }} />
               <ChartComponents.Bar dataKey="count" fill="var(--s)" radius={[0, 4, 4, 0]} barSize={20} />
             </ChartComponents.BarChart>
-          </ChartComponents.ResponsiveContainer>
-        ) : (
-          <EmptyChartFallback label="Sin alertas para graficar" />
+          ) : (
+            <EmptyChartFallback label="Sin alertas para graficar" />
+          )
         )}
-      </div>
+      </StableChartFrame>
     </div>
   );
 }
@@ -385,7 +414,7 @@ export function PatientActivityRadarWidget() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     import('recharts').then((r) => setChartComponents(r)).catch(() => setChartComponents(false));
-    patients.getAll().then(setPatientList).catch(console.error);
+    patients.getAll().then(setPatientList).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -432,21 +461,21 @@ export function PatientActivityRadarWidget() {
         </div>
         <PatientFilterDropdown patients={patientList} selectedId={selectedPatient} onSelect={setSelectedPatient} />
       </div>
-      <div style={{ height: 280, minHeight: 280 }}>
-        {ChartComponents && radarData.length > 0 ? (
-          <ChartComponents.ResponsiveContainer width="100%" height="100%">
-            <ChartComponents.RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+      <StableChartFrame>
+        {({ width, height }) => (
+          ChartComponents && radarData.length > 0 ? (
+            <ChartComponents.RadarChart width={width} height={height} cx="50%" cy="50%" outerRadius="70%" data={radarData}>
               <ChartComponents.PolarGrid stroke="var(--br, #f3f4f6)" />
               <ChartComponents.PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--t-s, #6b7280)', fontSize: 11 }} />
               <ChartComponents.PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
               <ChartComponents.Radar name={selectedPatient === 'all' ? 'General' : 'Paciente'} dataKey="A" stroke="var(--p)" fill="var(--p)" fillOpacity={0.3} />
               <ChartComponents.Tooltip contentStyle={{ borderRadius: 12, border: 'none', background: 'var(--t, #111827)', color: '#fff' }} />
             </ChartComponents.RadarChart>
-          </ChartComponents.ResponsiveContainer>
-        ) : (
-          <EmptyChartFallback label="Sin métricas de cohorte" />
+          ) : (
+            <EmptyChartFallback label="Sin métricas de cohorte" />
+          )
         )}
-      </div>
+      </StableChartFrame>
     </div>
   );
 }

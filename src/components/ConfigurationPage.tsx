@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { COLOR_DEFINITIONS } from '../data/palettes';
-import { oauthClients, type OAuthClient, type TokenResponse } from '../services/api';
+import { oauthClients, systemSettings, type OAuthClient, type SystemSettingsResponse, type TokenResponse } from '../services/api';
 
 type SettingsTab = 'appearance' | 'smtp' | 'ai' | 'security' | 'organization' | 'notifications' | 'integrations' | 'apiKeys' | 'data';
 
@@ -221,8 +221,8 @@ export default function ConfigurationPage() {
   };
 
   return (
-    <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gap: 22 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
+    <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gap: 22, minWidth: 0 }}>
+      <div className="settings-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--t, #111827)', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.03em', margin: 0 }}>
             Centro de configuración
@@ -231,7 +231,7 @@ export default function ConfigurationPage() {
             Ajusta apariencia, correo, Rix, seguridad, clínica e integraciones desde una sola superficie.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="settings-actions" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {savedAt && <span style={{ fontSize: 12, color: 'var(--t-s, #6b7280)', fontWeight: 700 }}>{savedAt}</span>}
           {isCustom && (
             <button type="button" onClick={resetPalette} style={secondaryButtonStyle}>
@@ -246,8 +246,8 @@ export default function ConfigurationPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 240px) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
-        <aside style={{
+      <div className="settings-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 240px) minmax(0, 1fr)', gap: 20, alignItems: 'start', minWidth: 0 }}>
+        <aside className="settings-tabs" style={{
           position: 'sticky',
           top: 0,
           display: 'grid',
@@ -535,6 +535,38 @@ export default function ConfigurationPage() {
           )}
         </main>
       </div>
+      <style>{`
+        @media (max-width: 1180px) {
+          .settings-layout {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+
+          .settings-tabs {
+            position: static !important;
+            display: flex !important;
+            overflow-x: auto !important;
+            gap: 8px !important;
+            scrollbar-width: thin;
+          }
+
+          .settings-tabs > button {
+            width: auto !important;
+            flex: 0 0 auto !important;
+            white-space: nowrap;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .settings-header,
+          .settings-actions {
+            width: 100%;
+          }
+
+          .settings-actions > button {
+            flex: 1 1 100%;
+          }
+        }
+      `}</style>
     </div>
   );
 }

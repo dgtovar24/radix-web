@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { Component, useEffect, useMemo, useState } from 'react';
 import ThemeProvider from './ThemeProvider';
 import ConfigurationPage from './ConfigurationPage';
 import RadixLogo from './RadixLogo';
 import {
   patients,
+  treatments,
   users,
   doctors,
   type User as ApiUser,
@@ -55,6 +56,35 @@ interface DashboardLayoutProps {
 type RightPanelTab = 'chat' | 'rix';
 type CalendarPatient = { id: string; name: string; start: string; end: string; color: string };
 
+class ShellErrorBoundary extends Component<{ children: React.ReactNode; label: string }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error(`Radix UI error (${this.props.label})`, error);
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+    return (
+      <div style={{
+        padding: 20,
+        borderRadius: 18,
+        border: '1px solid var(--br, #e5e7eb)',
+        background: 'var(--sf, #ffffff)',
+        color: 'var(--t, #111827)',
+        fontSize: 14,
+        fontWeight: 700,
+      }}>
+        No se pudo cargar esta sección. Actualiza la página o inténtalo de nuevo.
+      </div>
+    );
+  }
+}
+
 export default function DashboardLayout({ children, userName, userRole, userId, userEmail, configPage }: DashboardLayoutProps) {
   return (
     <ThemeProvider>
@@ -74,7 +104,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
   const [calendarPatients, setCalendarPatients] = useState<CalendarPatient[]>([
     { id: 'todos', name: 'Todos los pacientes', start: '', end: '', color: 'var(--p, #7c3aed)' },
   ]);
-  const [activeNav] = useState(() => {
+  const resolveActiveNav = () => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
       if (path.includes('mi-perfil')) return 'profile';
@@ -89,7 +119,18 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
     if (configPage === 'rix') return 'rix';
     if (configPage === 'profile') return 'profile';
     return 'home';
+  };
+
+  const [activeNav, setActiveNav] = useState(() => {
+    if (configPage === 'configuration') return 'settings';
+    if (configPage === 'rix') return 'rix';
+    if (configPage === 'profile') return 'profile';
+    return 'home';
   });
+
+  useEffect(() => {
+    setActiveNav(resolveActiveNav());
+  }, [configPage]);
 
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -226,11 +267,14 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
 
   const assistantExpanded = isRixExpanding || isChatExpanded;
 
-  const isMobile = viewportWidth < 760;
-  const isCompact = viewportWidth < 1180;
-  const leftColumnPx = !isMobile && isLeftSidebarOpen ? 240 : 0;
-  const compactRightPx = !isMobile && isRightSidebarOpen ? Math.min(340, Math.max(300, Math.round(viewportWidth * 0.3))) : 0;
-  const gridTemplateColumns = assistantExpanded
+  const isMobile = viewportWidth <= 760;
+  const isCompact = viewportWidth <= 1180;
+  const useOverlayPanels = isCompact;
+  const leftColumnPx = !useOverlayPanels && isLeftSidebarOpen ? 240 : 0;
+  const compactRightPx = !useOverlayPanels && isRightSidebarOpen ? Math.min(340, Math.max(300, Math.round(viewportWidth * 0.3))) : 0;
+  const gridTemplateColumns = useOverlayPanels
+    ? 'minmax(0, 1fr)'
+    : assistantExpanded
     ? `${leftColumnPx}px minmax(0, 0px) minmax(0, 1fr)`
     : `${leftColumnPx}px minmax(0, 1fr) ${compactRightPx}px`;
 
@@ -263,22 +307,24 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
         overflow: 'hidden',
       }}
     >
-      <LeftSidebar
-        activeNav={activeNav}
-        activeRightTab={activeRightTab}
-        chatExpanded={isChatExpanded}
-        isOpen={isMobile ? isMobileMenuOpen : isLeftSidebarOpen}
-        isMobile={isMobile}
-        onChatClick={() => {
-          openInternalChat();
-          setIsMobileMenuOpen(false);
-        }}
-        onCloseMobile={() => setIsMobileMenuOpen(false)}
-      />
+      {!isMobile && (
+        <LeftSidebar
+          activeNav={activeNav}
+          activeRightTab={activeRightTab}
+          chatExpanded={isChatExpanded}
+          isOpen={useOverlayPanels ? isMobileMenuOpen : isLeftSidebarOpen}
+          isMobile={useOverlayPanels}
+          onChatClick={() => {
+            openInternalChat();
+            setIsMobileMenuOpen(false);
+          }}
+          onCloseMobile={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
       <div
         style={{
-          gridColumn: 2,
+          gridColumn: useOverlayPanels ? 1 : 2,
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
@@ -293,7 +339,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
           pointerEvents: assistantExpanded ? 'none' : 'auto',
         }}
       >
-        {!isMobile && <button
+        {!useOverlayPanels && <button
           onClick={() => setIsLeftSidebarOpen(!isLeftSidebarOpen)}
           style={roundToggleStyle(isLeftSidebarOpen ? -14 : 14, 'left')}
           title={isLeftSidebarOpen ? 'Ocultar menú' : 'Mostrar menú'}
@@ -301,7 +347,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
           {isLeftSidebarOpen ? <ChevronLeft size={16} strokeWidth={2.5} /> : <ChevronRight size={16} strokeWidth={2.5} />}
         </button>}
 
-        {!isMobile && <button
+        {!useOverlayPanels && <button
           onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
           style={roundToggleStyle(isRightSidebarOpen ? -14 : 14, 'right')}
           title={isRightSidebarOpen ? 'Ocultar panel' : 'Mostrar panel'}
@@ -313,12 +359,12 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
           data-radix-main-scroll="true"
           style={{
             flex: 1,
-            padding: isMobile ? '20px 16px 84px' : (isCompact ? '28px 28px' : '32px 40px'),
+            padding: isMobile ? '16px 16px 124px' : (isCompact ? '24px 24px 96px' : '32px 40px'),
             overflowY: 'auto',
             overflowX: 'hidden',
           }}
         >
-          {isMobile && (
+          {useOverlayPanels && !isMobile && (
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(true)}
@@ -395,14 +441,17 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
             </div>
           </div>
 
-          {configPage === 'configuration' ? <ConfigurationPage /> : configPage === 'profile' ? <ProfilePage userName={userName} userRole={userRole} userId={userId} userEmail={userEmail} /> : children}
+          <ShellErrorBoundary label="main">
+            {configPage === 'configuration' ? <ConfigurationPage /> : configPage === 'profile' ? <ProfilePage userName={userName} userRole={userRole} userId={userId} userEmail={userEmail} /> : children}
+          </ShellErrorBoundary>
         </main>
       </div>
 
+      <ShellErrorBoundary label="assistant">
       <RightAssistantColumn
         expanded={assistantExpanded}
         open={isRightSidebarOpen}
-        isMobile={isMobile}
+        isMobile={useOverlayPanels}
         activeTab={activeRightTab}
         chatExpanded={isChatExpanded}
         onChatClick={openInternalChat}
@@ -410,7 +459,13 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
         onToggleChatExpanded={toggleInternalChatExpanded}
         onOpenFloating={openMobileAssistant}
         onCloseMobile={closeMobileAssistant}
+        hasMobileFooter={isMobile}
       />
+      </ShellErrorBoundary>
+
+      {isMobile && !assistantExpanded && (
+        <MobileFooterBar activeNav={activeNav} activeRightTab={activeRightTab} />
+      )}
 
       <PatientCalendarModal
         open={isCalendarOpen}
@@ -636,26 +691,105 @@ function LeftSidebar({
   );
 
   if (!isMobile) return sidebar;
+  if (!isOpen) return null;
 
   return (
     <>
-      {isOpen && (
-        <button
-          type="button"
-          aria-label="Cerrar navegación"
-          onClick={onCloseMobile}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 60,
-            border: 'none',
-            background: 'rgba(15, 23, 42, 0.28)',
-            cursor: 'pointer',
-          }}
-        />
-      )}
+      <button
+        type="button"
+        aria-label="Cerrar navegación"
+        onClick={onCloseMobile}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 60,
+          border: 'none',
+          background: 'rgba(15, 23, 42, 0.28)',
+          cursor: 'pointer',
+        }}
+      />
       {sidebar}
     </>
+  );
+}
+
+function MobileFooterBar({ activeNav, activeRightTab }: { activeNav: string; activeRightTab: RightPanelTab }) {
+  const navItems = [
+    { id: 'home', label: 'Inicio', icon: LayoutDashboard, href: '/dashboard' },
+    { id: 'pacientes', label: 'Pacientes', icon: Users, href: '/pacientes' },
+    { id: 'tratamientos', label: 'Tratamientos', icon: Activity, href: '/tratamientos' },
+    { id: 'alertas', label: 'Alertas', icon: Bell, href: '/alertas' },
+    { id: 'usuarios', label: 'Usuarios', icon: Shield, href: '/usuarios' },
+    { id: 'rix', label: 'Rix', icon: Bot, href: '/rix' },
+    { id: 'profile', label: 'Perfil', icon: User, href: '/mi-perfil' },
+    { id: 'settings', label: 'Config', icon: Settings, href: '/configuracion' },
+  ];
+
+  return (
+    <nav
+      aria-label="Navegación inferior"
+      style={{
+        position: 'fixed',
+        left: 10,
+        right: 10,
+        bottom: 10,
+        zIndex: 55,
+        display: 'flex',
+        gap: 6,
+        padding: '8px 8px calc(8px + env(safe-area-inset-bottom))',
+        borderRadius: 22,
+        border: '1px solid var(--br, #e5e7eb)',
+        background: 'color-mix(in srgb, var(--sf, #ffffff) 94%, transparent)',
+        boxShadow: '0 18px 46px rgba(15,23,42,0.16)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        scrollbarWidth: 'none',
+      }}
+    >
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const active = item.id === 'rix' ? activeRightTab === 'rix' : activeNav === item.id;
+        return (
+          <a
+            key={item.id}
+            href={item.href}
+            aria-current={active ? 'page' : undefined}
+            style={{
+              flex: '0 0 68px',
+              minWidth: 68,
+              minHeight: 54,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              borderRadius: 16,
+              textDecoration: 'none',
+              color: active ? 'var(--p, #7c3aed)' : 'var(--t-s, #6b7280)',
+              background: active ? 'color-mix(in srgb, var(--p, #7c3aed) 12%, #ffffff)' : 'transparent',
+              border: active ? '1px solid color-mix(in srgb, var(--p, #7c3aed) 20%, transparent)' : '1px solid transparent',
+              fontFamily: "'Inter', sans-serif",
+              transition: 'background 0.2s ease, color 0.2s ease, transform 0.2s ease',
+            }}
+          >
+            <Icon size={19} strokeWidth={active ? 2.6 : 2.1} />
+            <span style={{
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: 10,
+              fontWeight: active ? 900 : 750,
+              lineHeight: 1.1,
+            }}>
+              {item.label}
+            </span>
+          </a>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -670,6 +804,7 @@ function RightAssistantColumn({
   onToggleChatExpanded,
   onOpenFloating,
   onCloseMobile,
+  hasMobileFooter,
 }: {
   expanded: boolean;
   open: boolean;
@@ -681,6 +816,7 @@ function RightAssistantColumn({
   onToggleChatExpanded: () => void;
   onOpenFloating: () => void;
   onCloseMobile: () => void;
+  hasMobileFooter: boolean;
 }) {
   if (isMobile && !expanded) {
     return (
@@ -691,7 +827,7 @@ function RightAssistantColumn({
         style={{
           position: 'fixed',
           right: 18,
-          bottom: 18,
+          bottom: hasMobileFooter ? 96 : 18,
           width: 58,
           height: 58,
           borderRadius: '50%',
@@ -716,7 +852,7 @@ function RightAssistantColumn({
     <aside
       style={{
         display: 'flex',
-        gridColumn: 3,
+        gridColumn: isMobile ? 1 : 3,
         flexDirection: 'column',
         height: '100dvh',
         position: isMobile ? 'fixed' : 'relative',

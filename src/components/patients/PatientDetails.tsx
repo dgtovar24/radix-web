@@ -3,9 +3,37 @@
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, MapPin, Activity, HeartPulse, Clock, Pill, Send, Phone, Calendar, AlertCircle, MessageSquare, Footprints, Moon, Wind } from 'lucide-react';
 import { patients, watch, healthMetrics, radiationLogs, messages, type Patient, type WatchMetrics, type HealthMetricsResponse, type RadiationLogResponse } from '../../services/api';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 type TimeFilter = '24h' | '7d' | '30d' | 'all';
+
+function MeasuredChart({ children, height = 160 }: { children: (size: { width: number; height: number }) => React.ReactNode; height?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const check = () => {
+      const rect = node.getBoundingClientRect();
+      setSize({ width: Math.floor(rect.width), height: Math.floor(rect.height) });
+    };
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} style={{ height, minHeight: height, width: '100%', minWidth: 0 }}>
+      {size.width > 24 && size.height > 24 ? children(size) : (
+        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t-s)', fontSize: 12 }}>
+          Cargando gráfico...
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PatientDetails({ patientId }: { patientId: string }) {
   const pid = Number(patientId);
@@ -221,17 +249,17 @@ export default function PatientDetails({ patientId }: { patientId: string }) {
                 <span style={{ fontSize: 12, color: 'var(--t-s)' }}>BPM</span>
               </div>
             </div>
-            <div style={{ height: 200, width: '100%', marginLeft: -20 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={heartData.length > 0 ? heartData : [{ time: '--:--:--', bpm: 0 }]}>
+            <MeasuredChart height={200}>
+              {({ width, height }) => (
+                <LineChart width={width} height={height} data={heartData.length > 0 ? heartData : [{ time: '--:--:--', bpm: 0 }]}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--br)" />
                   <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
                   <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
                   <Tooltip contentStyle={{ background: 'var(--b)', border: '1px solid var(--br)', borderRadius: 8 }} />
                   <Line type="monotone" dataKey="bpm" stroke="#EF4444" strokeWidth={3} dot={false} activeDot={{ r: 6 }} isAnimationActive={false} />
                 </LineChart>
-              </ResponsiveContainer>
-            </div>
+              )}
+            </MeasuredChart>
           </div>
 
           <div style={{ background: 'var(--sf)', border: '1px solid var(--br)', borderRadius: 20, padding: 24 }}>
@@ -253,17 +281,17 @@ export default function PatientDetails({ patientId }: { patientId: string }) {
                   <Footprints size={14} style={{ color: 'var(--p)' }} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t)' }}>Pasos ({currentSteps} hoy)</span>
                 </div>
-                <div style={{ height: 110, width: '100%', marginLeft: -24 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData.length > 0 ? chartData : [{ label: 'Sin datos', steps: 0 }]}>
+                <MeasuredChart height={120}>
+                  {({ width, height }) => (
+                    <BarChart width={width} height={height} data={chartData.length > 0 ? chartData : [{ label: 'Sin datos', steps: 0 }]}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--br)" />
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--t-s)' }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--t-s)' }} />
                       <Tooltip contentStyle={{ background: 'var(--sf)', border: '1px solid var(--br)', borderRadius: 8 }} />
                       <Bar dataKey="steps" fill="var(--p)" radius={[4, 4, 0, 0]} />
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                  )}
+                </MeasuredChart>
               </div>
 
               <div style={{ background: 'var(--b)', borderRadius: 16, padding: '16px 16px 8px 16px', border: '1px solid var(--br)' }}>
@@ -271,17 +299,17 @@ export default function PatientDetails({ patientId }: { patientId: string }) {
                   <Wind size={14} style={{ color: '#06b6d4' }} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t)' }}>Radiación (mSv)</span>
                 </div>
-                <div style={{ height: 110, width: '100%', marginLeft: -24 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={radChartData.length > 0 ? radChartData : [{ label: 'Sin datos', radiation: 0 }]}>
+                <MeasuredChart height={120}>
+                  {({ width, height }) => (
+                    <AreaChart width={width} height={height} data={radChartData.length > 0 ? radChartData : [{ label: 'Sin datos', radiation: 0 }]}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--br)" />
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--t-s)' }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--t-s)' }} />
                       <Tooltip contentStyle={{ background: 'var(--sf)', border: '1px solid var(--br)', borderRadius: 8 }} />
                       <Area type="monotone" dataKey="radiation" stroke="var(--s)" fill="var(--s)" fillOpacity={0.2} strokeWidth={2} />
                     </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                  )}
+                </MeasuredChart>
               </div>
 
               <div style={{ background: 'var(--b)', borderRadius: 16, padding: '16px 16px 8px 16px', border: '1px solid var(--br)' }}>
@@ -289,17 +317,17 @@ export default function PatientDetails({ patientId }: { patientId: string }) {
                   <Moon size={14} style={{ color: '#8b5cf6' }} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t)' }}>Distancia (km)</span>
                 </div>
-                <div style={{ height: 110, width: '100%', marginLeft: -24 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData.length > 0 ? chartData : [{ label: 'Sin datos', distance: 0 }]}>
+                <MeasuredChart height={120}>
+                  {({ width, height }) => (
+                    <BarChart width={width} height={height} data={chartData.length > 0 ? chartData : [{ label: 'Sin datos', distance: 0 }]}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--br)" />
                       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--t-s)' }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--t-s)' }} />
                       <Tooltip contentStyle={{ background: 'var(--sf)', border: '1px solid var(--br)', borderRadius: 8 }} />
                       <Bar dataKey="distance" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                  )}
+                </MeasuredChart>
               </div>
             </div>
           </div>

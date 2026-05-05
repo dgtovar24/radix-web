@@ -29,14 +29,14 @@ export default function UsuariosList() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32, animation: 'fadeIn 0.35s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--t)', margin: '0 0 6px', letterSpacing: '-0.02em' }}>Usuarios del Sistema</h1>
           <p style={{ fontSize: 13, color: 'var(--t-s)', margin: 0 }}>Gestiona todos los usuarios registrados.</p>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--b)', border: '1px solid var(--br)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--p)' }}>
             <ShieldCheck size={20} strokeWidth={2} />
@@ -58,15 +58,15 @@ export default function UsuariosList() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--b)', border: '1px solid var(--br)', borderRadius: 99, padding: '8px 16px', width: 320 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--b)', border: '1px solid var(--br)', borderRadius: 99, padding: '8px 16px', width: 'min(100%, 320px)' }}>
           <Search size={16} style={{ color: 'var(--t-s)', marginRight: 8 }} />
           <input type="text" placeholder="Buscar usuario..." value={search} onChange={(e) => setSearch(e.target.value)}
             style={{ flex: 1, fontSize: 13, color: 'var(--t)', background: 'transparent', border: 'none', outline: 'none' }} />
         </div>
       </div>
 
-      <div style={{ background: 'var(--sf)', borderRadius: 20, border: '1px solid var(--br)', overflow: 'hidden' }}>
+      <div className="responsive-table-card" style={{ background: 'var(--sf)', borderRadius: 20, border: '1px solid var(--br)', overflow: 'hidden' }}>
         {loading ? (
           <div style={{ padding: 48, textAlign: 'center', color: 'var(--t-s)', fontSize: 14 }}>Cargando usuarios...</div>
         ) : (
@@ -84,7 +84,7 @@ export default function UsuariosList() {
                 const isAdmin = u.role?.toLowerCase() === 'admin';
                 return (
                   <tr key={u.id} style={{ borderBottom: idx < filtered.length - 1 ? '1px solid var(--br)' : 'none' }}>
-                    <td style={{ padding: '20px 24px' }}>
+                    <td data-label="Usuario" style={{ padding: '20px 24px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                         <div style={{ width: 40, height: 40, borderRadius: '50%', background: isDoctor ? 'var(--p)' : isAdmin ? 'var(--t)' : 'var(--s)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
                           {u.firstName?.charAt(0).toUpperCase()}
@@ -95,22 +95,22 @@ export default function UsuariosList() {
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '20px 24px' }}>
+                    <td data-label="Rol" style={{ padding: '20px 24px' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--t)' }}>
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: isDoctor ? 'var(--p)' : isAdmin ? 'var(--t)' : 'var(--s)' }} />
                         {u.role}
                       </span>
                     </td>
-                    <td style={{ padding: '20px 24px' }}>
+                    <td data-label="Email" style={{ padding: '20px 24px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--t)' }}>
                         <Mail size={14} style={{ color: 'var(--t-s)' }} />
                         {u.email}
                       </div>
                     </td>
-                    <td style={{ padding: '20px 24px', fontSize: 13, color: 'var(--t-s)' }}>
+                    <td data-label="Registro" style={{ padding: '20px 24px', fontSize: 13, color: 'var(--t-s)' }}>
                       {u.createdAt ? new Date(u.createdAt).toLocaleDateString('es-ES') : 'N/A'}
                     </td>
-                    <td style={{ padding: '20px 24px', textAlign: 'right' }}>
+                    <td data-label="Acciones" style={{ padding: '20px 24px', textAlign: 'right' }}>
                       <button style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--t-s)' }}>
                         <MoreVertical size={18} />
                       </button>
@@ -135,6 +135,42 @@ export default function UsuariosList() {
           </button>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 1180px) {
+          .responsive-table-card { overflow: visible !important; background: transparent !important; border: none !important; }
+          .responsive-table-card table,
+          .responsive-table-card tbody,
+          .responsive-table-card tr,
+          .responsive-table-card td { display: block; width: 100%; }
+          .responsive-table-card thead { display: none; }
+          .responsive-table-card tbody { display: grid; gap: 12px; }
+          .responsive-table-card tr {
+            border: 1px solid var(--br) !important;
+            border-radius: 18px;
+            background: var(--sf);
+            padding: 14px;
+          }
+          .responsive-table-card td {
+            padding: 8px 4px !important;
+            text-align: left !important;
+            border: none !important;
+            box-sizing: border-box;
+          }
+          .responsive-table-card td:not(:first-child) {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+          }
+          .responsive-table-card td:not(:first-child)::before {
+            content: attr(data-label);
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--t-s);
+            text-transform: uppercase;
+          }
+        }
+      `}</style>
     </div>
   );
 }

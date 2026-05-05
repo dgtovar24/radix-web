@@ -208,7 +208,7 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div className="alert-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => window.location.href = `/pacientes/${alert.patientId}`}
                 title="Ver paciente"
@@ -257,6 +257,17 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @media (max-width: 760px) {
+          .alert-actions {
+            width: 100%;
+            justify-content: stretch !important;
+          }
+          .alert-actions > button,
+          .alert-actions > a {
+            flex: 1 1 calc(50% - 8px);
+            min-width: 0;
+          }
+        }
       `}</style>
     </div>
   );

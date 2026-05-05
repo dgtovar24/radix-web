@@ -195,6 +195,23 @@ export const oauthClients = {
     }),
 };
 
+// System settings
+export const systemSettings = {
+  get: () => fetchJson<SystemSettingsResponse>('/system-settings'),
+  update: (data: SystemSettingsResponse) =>
+    fetchJson<SystemSettingsResponse>('/system-settings', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  testSmtp: (email: string) =>
+    fetchJson<{ sent: boolean; message?: string }>('/system-settings/smtp/test', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+      headers: { 'Content-Type': 'application/json' },
+    }),
+};
+
 // Isotopes
 export const isotopes = {
   getAll: () => fetchJson<Isotope[]>('/isotopes'),
@@ -288,6 +305,16 @@ export interface OAuthClient {
 export interface TokenResponse {
   accessToken: string; tokenType: string; expiresIn: number; scope: string;
   patientId?: number; patientName?: string; familyAccessCode?: string;
+}
+
+export interface SystemSettingsResponse {
+  smtp?: Record<string, string | boolean>;
+  ai?: Record<string, string | boolean>;
+  security?: Record<string, string | boolean>;
+  organization?: Record<string, string | boolean>;
+  notifications?: Record<string, string | boolean>;
+  integrations?: Record<string, string | boolean>;
+  dataSettings?: Record<string, string | boolean>;
 }
 
 export interface Isotope {

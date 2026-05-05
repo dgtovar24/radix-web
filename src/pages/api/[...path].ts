@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 
 const API_BASE = process.env.API_BASE_URL
   || (import.meta.env.PUBLIC_API_URL)
-  || (import.meta.env.DEV ? 'http://localhost:8080/v2' : 'https://api.raddix.pro/v1');
+  || (import.meta.env.DEV ? 'http://localhost:8080/v2' : 'https://api.raddix.pro/v2');
 
 const proxy: APIRoute = async ({ params, request, cookies }) => {
   const path = params.path ?? '';
