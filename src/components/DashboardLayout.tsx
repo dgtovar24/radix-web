@@ -227,14 +227,13 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
   };
 
   const openInternalChat = () => {
-    const keepExpanded = isRixExpanding || isChatExpanded || (typeof window !== 'undefined' && window.location.pathname === '/rix');
     setActiveRightTab('chat');
     setIsRightSidebarOpen(true);
-    setIsChatExpanded(keepExpanded);
+    setIsChatExpanded(true);
+    setIsRixExpanding(false);
     if (typeof window !== 'undefined') {
       window.scrollTo({ left: 0, top: 0 });
     }
-    setIsRixExpanding(false);
   };
 
   const toggleInternalChatExpanded = () => {
@@ -1022,348 +1021,183 @@ function RightPanelTabs({
 }
 
 function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
-  const [directoryUsers, setDirectoryUsers] = useState<InternalChatUser[]>([]);
-  const [directChats, setDirectChats] = useState<InternalConversation[]>([]);
-  const [groupChats, setGroupChats] = useState<InternalConversation[]>([]);
-  const [chatMessages, setChatMessages] = useState<InternalMessage[]>([]);
-  const [directoryTab, setDirectoryTab] = useState<'usuarios' | 'chats' | 'grupales'>('usuarios');
+  const [users, setUsers] = useState<any[]>([]);
+  const [tab, setTab] = useState<'usuarios' | 'chats' | 'grupos'>('usuarios');
   const [query, setQuery] = useState('');
-  const [selectedUser, setSelectedUser] = useState<string | number>('');
-  const [chatStatus, setChatStatus] = useState('');
-  const [draftMessage, setDraftMessage] = useState('');
-  const { connected, messages: wsMessages, sendMessage } = useWebSocketChat();
+  const [selected, setSelected] = useState<string | number>('');
+  const [draft, setDraft] = useState('');
+  const [msgs, setMsgs] = useState<any[]>([]);
+  const { connected, messages: wsMsgs, sendMessage } = useWebSocketChat();
 
   useEffect(() => {
     let active = true;
-    const loadChatData = async () => {
-      try {
-        const apiUsers = await users.getAll();
-        const directory = apiUsers.map((user) => ({
-          id: user.id,
-          name: `${user.firstName} ${user.lastName}`.trim() || user.email,
-          role: user.role,
-          status: 'offline',
-        }));
-        if (!active) return;
-        setDirectoryUsers(directory);
-        setSelectedUser((current) => current || directory[0]?.id || '');
-        setChatStatus('');
-      } catch (error) {
-        if (active) setChatStatus('No se pudieron cargar los datos del chat interno desde la API.');
-      }
-    };
-    loadChatData();
+    users.getAll().then(data => {
+      if (!active) return;
+      const dir = data.map((u: any) => ({
+        id: u.id,
+        name: `${u.firstName} ${u.lastName}`.trim() || u.email,
+        role: u.role,
+      }));
+      setUsers(dir);
+      setSelected((c: any) => c || dir[0]?.id || '');
+    }).catch(() => {});
     return () => { active = false; };
   }, []);
 
-  const filteredUsers = directoryUsers.filter(user =>
-    `${user.name} ${user.role || ''}`.toLowerCase().includes(query.toLowerCase())
+  useEffect(() => {
+    setMsgs((prev: any) => [...prev, ...wsMsgs].slice(-50));
+  }, [wsMsgs]);
+
+  const allMsgs = msgs;
+  const filtered = users.filter((u: any) =>
+    `${u.name} ${u.role || ''}`.toLowerCase().includes(query.toLowerCase())
   );
-  const selectedUserData = directoryUsers.find(user => user.id === selectedUser);
+
+  const send = () => {
+    const text = draft.trim();
+    if (!text) return;
+    const sent = sendMessage(text, 'Tú');
+    if (sent) {
+      setMsgs((prev: any) => [...prev, { id: Date.now(), senderName: 'Tú', messageText: text, sentAt: new Date().toISOString(), online: true }]);
+    }
+    setDraft('');
+  };
+
+  const wsDot = { width: 6, height: 6, borderRadius: '50%', background: connected ? '#10b981' : '#ef4444' };
 
   return (
-    <>
-      <div style={{ padding: isMobile ? '16px 16px 0' : '24px 24px 0' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'row', height: '100%', overflow: 'hidden', fontFamily: "'Inter', sans-serif" }}>
+      {/* LEFT TABS — vertical */}
+      <div style={{
+        width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center',
+        gap: 4, padding: '12px 6px', borderRight: '1px solid var(--br, #e5e7eb)',
+        background: 'var(--b, #f8fafc)',
+      }}>
+        {[
+          ['usuarios', Users],
+          ['chats', MessageCircle],
+          ['grupos', UserPlus],
+        ].map(([id, Icon]) => {
+          const active = tab === id;
+          const C = Icon as any;
+          return (
+            <button key={id as string} type="button" onClick={() => setTab(id as any)}
+              style={{
+                width: 40, height: 40, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 2,
+                border: 'none', borderRadius: 12,
+                background: active ? 'color-mix(in srgb, var(--p, #7c3aed) 10%, #ffffff)' : 'transparent',
+                color: active ? 'var(--p, #7c3aed)' : 'var(--t-s, #6b7280)',
+                fontSize: 9, fontWeight: 800, cursor: 'pointer',
+              }}>
+              <C size={16} strokeWidth={2} />
+              <span>{id === 'usuarios' ? 'Usu.' : id === 'chats' ? 'Chat' : 'Grupo'}</span>
+            </button>
+          );
+        })}
+        <div style={{ marginTop: 'auto' }} title={connected ? 'Conectado' : 'Desconectado'}>
+          <div style={wsDot} />
+        </div>
+      </div>
+
+      {/* RIGHT CONTENT */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <div style={{
-          background: 'var(--b, #f8fafc)',
-          border: '1px solid var(--br, transparent)',
-          borderRadius: 20,
-          padding: 14,
-          display: 'grid',
-          gap: 12,
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 14px', borderBottom: '1px solid var(--br, #e5e7eb)',
+          background: 'var(--sf, #ffffff)',
         }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-            gap: 6,
-            padding: 4,
-            borderRadius: 14,
-            background: 'var(--sf, #ffffff)',
-            border: '1px solid var(--br, #e5e7eb)',
-          }}>
-            {[
-              ['usuarios', 'Usuarios', Users],
-              ['chats', 'Chats', MessageCircle],
-              ['grupales', 'Grupales', UserPlus],
-            ].map(([id, label, Icon]) => {
-              const active = directoryTab === id;
-              const TabIcon = Icon as typeof Users;
-              return (
-                <button
-                  key={id as string}
-                  type="button"
-                  onClick={() => setDirectoryTab(id as 'usuarios' | 'chats' | 'grupales')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    minHeight: 34,
-                    border: 'none',
-                    borderRadius: 10,
-                    background: active ? 'color-mix(in srgb, var(--p, #7c3aed) 10%, #ffffff)' : 'transparent',
-                    color: active ? 'var(--p, #7c3aed)' : 'var(--t-s, #6b7280)',
-                    fontSize: 11,
-                    fontWeight: 900,
-                    cursor: 'pointer',
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  <TabIcon size={14} />
-                  <span>{label as string}</span>
-                </button>
-              );
-            })}
-          </div>
+          <Search size={14} color="var(--t-s, #6b7280)" />
+          <input value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Buscar..."
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent',
+              color: 'var(--t, #111827)', fontSize: 12 }} />
+        </div>
 
-          {directoryTab === 'usuarios' && (
-            <>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                borderRadius: 14,
-                border: '1px solid var(--br, #e5e7eb)',
-                background: 'var(--sf, #ffffff)',
-                padding: '8px 10px',
-              }}>
-                <Search size={15} color="var(--t-s, #6b7280)" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Buscar usuario..."
-                  style={{
-                    minWidth: 0,
-                    flex: 1,
-                    border: 'none',
-                    outline: 'none',
-                    background: 'transparent',
-                    color: 'var(--t, #111827)',
-                    fontSize: 12,
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                />
-              </div>
-              <div style={{ display: 'grid', gap: 8, maxHeight: isMobile ? 220 : 190, overflowY: 'auto' }}>
-                {filteredUsers.map(user => {
-                  const selected = user.id === selectedUser;
-                  return (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => setSelectedUser(user.id)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        width: '100%',
-                        padding: 10,
-                        borderRadius: 14,
-                        border: selected ? '1px solid color-mix(in srgb, var(--p, #7c3aed) 42%, transparent)' : '1px solid var(--br, #e5e7eb)',
-                        background: selected ? 'color-mix(in srgb, var(--p, #7c3aed) 8%, #ffffff)' : 'var(--sf, #ffffff)',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontFamily: "'Inter', sans-serif",
-                      }}
-                    >
-                        <img src={getAvatarUrl(user)} alt={user.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>{user.name}</div>
-                        <div style={{ marginTop: 2, fontSize: 11, color: 'var(--t-s, #6b7280)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.role}</div>
-                      </div>
-	                      <span style={{ fontSize: 10, fontWeight: 800, color: user.status === 'Disponible' ? 'var(--sc, #10b981)' : 'var(--t-s, #6b7280)' }}>{user.status || 'Usuario'}</span>
-                    </button>
-                  );
-                })}
-              </div>
-	              {filteredUsers.length === 0 && <EmptyInline text={chatStatus || 'No hay usuarios disponibles desde la API.'} />}
-	              <button type="button" disabled={!selectedUserData} onClick={() => {
-                  if (!selectedUserData) return;
-                  setDirectoryTab('chats');
-                  setChatStatus('');
-                  if (chatMessages.length === 0) {
-                    setChatMessages([{
-                      id: `local-welcome-${selectedUserData.id}`,
-                      senderName: selectedUserData.name,
-                      senderAvatarId: selectedUserData.id,
-                      senderAvatarUrl: selectedUserData.avatarUrl,
-                      messageText: 'Conversación iniciada. Escribe un mensaje para continuar.',
-                      sentAt: new Date().toISOString(),
-                    }]);
-                  }
-                }} style={{
-                width: '100%',
-                border: 'none',
-                borderRadius: 14,
-                padding: '11px 14px',
-                background: 'var(--p, #7c3aed)',
-                color: '#ffffff',
-                fontSize: 12,
-                fontWeight: 900,
-	                cursor: selectedUserData ? 'pointer' : 'not-allowed',
-	                opacity: selectedUserData ? 1 : 0.55,
-                fontFamily: "'Inter', sans-serif",
-              }}>
-	                {selectedUserData ? `Chatear con ${selectedUserData.name}` : 'Selecciona un usuario'}
-              </button>
-            </>
-          )}
-
-          {directoryTab !== 'usuarios' && (
-            <div style={{ display: 'grid', gap: 8 }}>
-	              {(directoryTab === 'chats' ? directChats : groupChats).map(chat => (
-                <button
-                  key={chat.id}
-                  type="button"
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: 12,
-                    borderRadius: 14,
-                    border: '1px solid var(--br, #e5e7eb)',
-                    background: 'var(--sf, #ffffff)',
-                    cursor: 'pointer',
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>{chat.title}</span>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--p, #7c3aed)', whiteSpace: 'nowrap' }}>{chat.meta}</span>
-                  </div>
-                  <div style={{ marginTop: 6, fontSize: 11, lineHeight: 1.45, color: 'var(--t-s, #6b7280)' }}>{chat.excerpt}</div>
-                </button>
-	              ))}
-	              {(directoryTab === 'chats' ? directChats : groupChats).length === 0 && (
-	                <EmptyInline text={directoryTab === 'chats' ? 'No hay chats directos devueltos por la API.' : 'No hay chats grupales devueltos por la API.'} />
-	              )}
-              {directoryTab === 'grupales' && (
-                <button type="button" style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  border: '1px solid var(--br, #e5e7eb)',
-                  borderRadius: 14,
-                  padding: '10px 12px',
-                  background: 'var(--t, #111827)',
-                  color: 'var(--sf, #ffffff)',
-                  fontSize: 12,
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  fontFamily: "'Inter', sans-serif",
+        {/* USER LIST / CHATS LIST */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
+          {tab === 'usuarios' && filtered.slice(0, 12).map((u: any) => {
+            const sel = u.id === selected;
+            return (
+              <button key={u.id} type="button" onClick={() => { setSelected(u.id); setTab('chats'); }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: 8,
+                  borderRadius: 10, border: sel ? '1px solid var(--p)' : '1px solid transparent',
+                  background: sel ? 'color-mix(in srgb, var(--p) 8%, #fff)' : 'transparent',
+                  cursor: 'pointer', textAlign: 'left',
                 }}>
-                  <Plus size={15} />
-                  Nuevo chat grupal
-                </button>
-              )}
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'var(--p)', color: '#fff', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 700, flexShrink: 0,
+                }}>{u.name.charAt(0)}</div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--t)' }}>{u.name}</div>
+                  <div style={{ fontSize: 10, color: 'var(--t-s)' }}>{u.role}</div>
+                </div>
+              </button>
+            );
+          })}
+          {tab !== 'usuarios' && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--t-s)', fontSize: 12 }}>
+              Selecciona un usuario para chatear
             </div>
           )}
         </div>
-      </div>
 
-      <div style={{ padding: isMobile ? '24px 16px 12px' : '32px 24px 16px', flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--br, #f3f4f6)' }} />
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t-s, #4b5563)' }}>Chat interno</div>
-          <div style={{ flex: 1, height: 1, background: 'var(--br, #f3f4f6)' }} />
-        </div>
-        {chatMessages.map((message) => (
-          <ChatMessage
-            key={message.id}
-            name={message.senderName}
-            img={message.senderAvatarId || message.id}
-            avatarUrl={message.senderAvatarUrl}
-            time={formatTime(message.sentAt)}
-            text={message.messageText}
-            online={message.online}
-          />
-        ))}
-        {chatMessages.length === 0 && <EmptyInline text={chatStatus || 'No hay mensajes cargados desde la API para esta conversación.'} />}
-      </div>
-
-      <form onSubmit={(event) => {
-        event.preventDefault();
-        const text = draftMessage.trim();
-        if (!text) return;
-        const optimisticMessage: any = {
-          id: `local-${Date.now()}`,
-          senderName: 'Tú',
-          messageText: text,
-          sentAt: new Date().toISOString(),
-          online: true,
-        };
-        const sent = sendMessage(text, 'Tú');
-        if (sent) {
-          setChatMessages((current) => [...current, optimisticMessage]);
-        } else {
-          setChatStatus('No se pudo enviar. Conecta el chat.');
-        }
-        setDraftMessage('');
-      }} style={{ padding: isMobile ? '12px 16px 16px' : '16px 24px 24px' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          background: 'var(--b, #f8fafc)',
-          border: '1px solid var(--br, transparent)',
-          borderRadius: 99,
-          padding: '6px 6px 6px 16px',
-          gap: 8,
-        }}>
-          <Paperclip size={16} color="var(--t-s)" />
-          <input
-            type="text"
-            value={draftMessage}
-            onChange={(event) => setDraftMessage(event.target.value)}
-            placeholder="Escribe un mensaje"
-            style={{
-              flex: 1,
-              border: 'none',
-              background: 'transparent',
-              padding: '8px 0',
-              fontSize: 13,
-              color: 'var(--t, #111827)',
-              outline: 'none',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          />
-          <button style={plainIconButtonStyle}><Smile size={18} /></button>
-          <button style={plainIconButtonStyle}><Mic size={18} /></button>
-          <button type="submit" disabled={!draftMessage.trim()} style={{
-            ...plainIconButtonStyle,
-            background: draftMessage.trim() ? 'var(--p, #7c3aed)' : 'transparent',
-            color: draftMessage.trim() ? '#ffffff' : 'var(--t-s, #6b7280)',
-            cursor: draftMessage.trim() ? 'pointer' : 'not-allowed',
-          }}><Send size={17} /></button>
-        </div>
-      </form>
-    </>
-  );
-}
-
-function ChatMessage({ name, img, avatarUrl, time, text, online }: { name: string; img: string | number; avatarUrl?: string; time: string; text: string; online?: boolean }) {
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-        <div style={{ position: 'relative' }}>
-          <img src={avatarUrl || `https://i.pravatar.cc/150?img=${img}`} alt={name} style={{ width: 36, height: 36, borderRadius: '50%' }} />
-          {online && <div style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: '50%', background: 'var(--p, #10b981)', border: '2px solid var(--sf, #ffffff)' }} />}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t, #111827)' }}>{name}</div>
-            <div style={{ fontSize: 11, color: 'var(--t-s, #9ca3af)' }}>{time}</div>
+        {/* MESSAGE AREA */}
+        <div style={{ borderTop: '1px solid var(--br)', background: 'var(--sf)' }}>
+          <div style={{ maxHeight: 180, overflowY: 'auto', padding: '8px 12px' }}>
+            {allMsgs.slice(-15).map((m: any, i: number) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'flex-start' }}>
+                <div style={{
+                  width: 26, height: 26, borderRadius: '50%',
+                  background: m.senderName === 'Tú' ? 'var(--p)' : 'var(--t)',
+                  color: '#fff', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0,
+                }}>{m.senderName.charAt(0)}</div>
+                <div style={{
+                  background: m.senderName === 'Tú' ? 'var(--p)' : 'var(--b)',
+                  color: m.senderName === 'Tú' ? '#fff' : 'var(--t)',
+                  padding: '8px 12px', borderRadius: m.senderName === 'Tú' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                  fontSize: 12, lineHeight: 1.4, maxWidth: '80%',
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 2, opacity: 0.7 }}>{m.senderName}</div>
+                  {m.messageText}
+                </div>
+              </div>
+            ))}
           </div>
+
+          {/* INPUT */}
           <div style={{
-            marginTop: 8,
-            background: 'var(--b, #eff6ff)',
-            border: '1px solid var(--br, transparent)',
-            borderRadius: '0 16px 16px 16px',
-            padding: '12px 14px',
-            fontSize: 13,
-            color: 'var(--t, #1f2937)',
-            lineHeight: 1.5,
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '8px 12px', borderTop: '1px solid var(--br)',
           }}>
-            {text}
+            <button type="button" style={pBtnStyle} title="Emoji"><Smile size={16} /></button>
+            <button type="button" style={pBtnStyle} title="Adjuntar"><Paperclip size={16} /></button>
+            <button type="button" style={pBtnStyle} title="Nota de voz"><Mic size={16} /></button>
+            <input
+              value={draft} onChange={e => setDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); send(); } }}
+              placeholder="Escribe un mensaje..."
+              style={{
+                flex: 1, border: '1px solid var(--br)', borderRadius: 20,
+                padding: '8px 14px', fontSize: 12, outline: 'none',
+                background: 'var(--b)', color: 'var(--t)',
+              }}
+            />
+            <button type="button" onClick={send} disabled={!draft.trim()}
+              style={{
+                width: 36, height: 36, borderRadius: '50%', border: 'none',
+                background: draft.trim() ? 'var(--p)' : 'var(--br)',
+                color: draft.trim() ? '#fff' : 'var(--t-s)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: draft.trim() ? 'pointer' : 'default',
+              }}>
+              <ArrowUpRight size={18} />
+            </button>
           </div>
         </div>
       </div>
@@ -1371,34 +1205,11 @@ function ChatMessage({ name, img, avatarUrl, time, text, online }: { name: strin
   );
 }
 
-function EmptyInline({ text }: { text: string }) {
-  return (
-    <div style={{
-      padding: '12px 14px',
-      borderRadius: 14,
-      border: '1px dashed var(--br, #e5e7eb)',
-      background: 'color-mix(in srgb, var(--b, #f8fafc) 82%, #ffffff)',
-      color: 'var(--t-s, #6b7280)',
-      fontSize: 12,
-      lineHeight: 1.45,
-    }}>
-      {text}
-    </div>
-  );
-}
-
-function getAvatarUrl(user: InternalChatUser) {
-  if (user.avatarUrl) return user.avatarUrl;
-  const numeric = Number(user.id);
-  const avatarId = Number.isFinite(numeric) ? (numeric % 70) + 1 : 1;
-  return `https://i.pravatar.cc/150?img=${avatarId}`;
-}
-
-function formatTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-}
+const pBtnStyle: React.CSSProperties = {
+  width: 32, height: 32, borderRadius: 8, border: '1px solid var(--br)',
+  background: 'var(--sf)', color: 'var(--t-s)', display: 'flex',
+  alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+};
 
 function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean }) {
   const [previousRixChats, setPreviousRixChats] = useState<RixConversation[]>([]);
@@ -1657,7 +1468,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                     </button>
                   );
 	                })}
-	                {previousRixChats.length === 0 && <EmptyInline text="No hay chats con Rix devueltos por la API." />}
+	                {previousRixChats.length === 0 && <EmptyInline text="No hay chats con Rix devueltos por el servidor." />}
 	              </div>
 	              {activeChat && <div style={{
                 marginTop: 12,
@@ -1725,7 +1536,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
 	                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--t-s, #6b7280)' }}>{group.excerpt || 'Sesión grupal sin resumen disponible.'}</div>
 	                </button>
 	              ))}
-	              {rixGroups.length === 0 && <EmptyInline text="No hay chats grupales de Rix devueltos por la API." />}
+	              {rixGroups.length === 0 && <EmptyInline text="No hay chats grupales de Rix devueltos por el servidor." />}
 
               {showGroupComposer && (
                 <div style={{
@@ -1762,7 +1573,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
 	                        </button>
 	                      );
 	                    })}
-	                    {doctors.length === 0 && <EmptyInline text="No hay médicos disponibles desde la API." />}
+	                    {doctors.length === 0 && <EmptyInline text="No hay médicos disponibles." />}
                   </div>
                   <div style={{ marginTop: 10, fontSize: 11, color: 'var(--t-s, #6b7280)', lineHeight: 1.45 }}>{selectedDoctorSummary}</div>
                   <button type="button" style={{
@@ -1804,7 +1615,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               marginBottom: 14,
               animation: 'rixPanelReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1)',
             }}>
-	              <EmptyInline text="La conversación de Rix se cargará desde la API cuando el backend devuelva mensajes." />
+	              <EmptyInline text="La conversación de Rix se cargará cuando el asistente procese la consulta." />
             </div>
           )}
           <textarea
@@ -1958,7 +1769,7 @@ function PatientCalendarModal({
               Calendario de pacientes
             </h2>
             <p style={{ margin: '8px 0 0', color: 'var(--t-s, #6b7280)', fontSize: 13, lineHeight: 1.5 }}>
-              Visualiza inicio y fin de seguimiento por paciente usando pacientes y tratamientos de la API.
+              Carga los tratamientos activos de los pacientes.
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar" style={{
@@ -2120,7 +1931,7 @@ function ProfilePage({ userName, userRole, userId, userEmail }: { userName: stri
           specialty: data.specialty || '',
         });
       })
-      .catch(() => setStatus('No se pudo cargar el perfil desde la API.'));
+      .catch(() => setStatus('No se pudo cargar el perfil.'));
   }, [userId]);
 
   const saveProfile = async () => {
@@ -2132,7 +1943,7 @@ function ProfilePage({ userName, userRole, userId, userEmail }: { userName: stri
     try {
       const updated = await users.update(userId, form);
       setProfile(updated);
-      setStatus('Perfil actualizado desde la API.');
+      setStatus('Perfil actualizado.');
     } catch {
       setStatus('No se pudo guardar el perfil.');
     }
@@ -2155,7 +1966,7 @@ function ProfilePage({ userName, userRole, userId, userEmail }: { userName: stri
     try {
       await users.update(userId, { password: passwordForm.next });
       setPasswordForm({ current: '', next: '', confirm: '' });
-      setPasswordStatus('Contraseña actualizada en la API.');
+      setPasswordStatus('Contraseña actualizada.');
     } catch {
       setPasswordStatus('No se pudo actualizar la contraseña.');
     }
@@ -2271,7 +2082,7 @@ function ProfilePage({ userName, userRole, userId, userEmail }: { userName: stri
           </div>
         </ProfileCard>
 
-        <ProfileCard icon={Activity} title="Actividad y sesión" subtitle="Resumen de información recibida desde la sesión y la API.">
+        <ProfileCard icon={Activity} title="Actividad y sesión" subtitle="Resumen de tu actividad en la plataforma.">
           <InfoLine label="ID de usuario" value={String(userId || profile?.id || 'No disponible')} />
           <InfoLine label="Creado" value={profile?.createdAt ? new Date(profile.createdAt).toLocaleString('es-ES') : 'No disponible'} />
           <InfoLine label="Email" value={profile?.email || userEmail || 'No disponible'} />
