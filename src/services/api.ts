@@ -319,6 +319,7 @@ export interface SystemSettingsResponse {
 
 export interface Isotope {
   id: number; name: string; symbol: string; type: string; halfLife: number; halfLifeUnit: string;
+  biologicalHalfLife?: number;
 }
 
 export interface DashboardStats {
