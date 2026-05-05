@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
 
+const API_URL = 'https://api.raddix.pro/v1';
+
 interface Props {
   creatorRole?: string;
   creatorToken?: string | number;
@@ -29,7 +31,7 @@ export default function RegisterForm({ creatorRole }: Props) {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

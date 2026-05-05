@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Activity, Lock, User, Shield, AlertCircle } from 'lucide-react';
 
+const API_URL = 'https://api.raddix.pro/v1';
+
 export default function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +18,7 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
