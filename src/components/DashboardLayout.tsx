@@ -1489,12 +1489,9 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     setThinking(true);
 
     // Build system context with thinking instruction
-    const ctx = (selectedDoctors.length > 0
+    const ctx = selectedDoctors.length > 0
       ? `Contexto clínico — médicos presentes: ${selectedDoctorSummary}. `
-      : '')
-      + (thinkingMode
-        ? 'Puedes usar <think>...</think> para razonar antes de responder.'
-        : 'IMPORTANTE: NO uses etiquetas <think>. Responde directamente sin razonamiento interno.');
+      : '';
 
     // Try WebSocket first
     const sent = sendQuery(text);
