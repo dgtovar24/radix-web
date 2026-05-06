@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Component, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { Component, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ThemeProvider from './ThemeProvider';
 import ConfigurationPage from './ConfigurationPage';
 import RadixLogo from './RadixLogo';
@@ -1375,8 +1375,6 @@ function EmptyInline({ text }: { text: string }) {
 }
 
 function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean }) {
-  const [chats, setChats] = useState<any[]>([]);
-  const [rixGroups, setRixGroups] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [activeRixChat, setActiveRixChat] = useState<string | number>('');
   const [showGroupComposer, setShowGroupComposer] = useState(false);
@@ -1386,48 +1384,81 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [selectedDoctors, setSelectedDoctors] = useState<Array<string | number>>([]);
   const [rixPrompt, setRixPrompt] = useState('');
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
+  const [thinkingMode, setThinkingMode] = useState(false);
+  const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; time: string}>>([]);
   const { sendQuery } = useWebSocketRix();
-  const activeChat = chats.find(chat => chat.id === activeRixChat);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const msgsRef = useRef<HTMLDivElement>(null);
+
+  // Hardcoded history for display
+  const chats = [
+    { id: 'turno', title: 'Resumen del turno', meta: 'Hoy', excerpt: 'Alertas pendientes y pacientes con revisión activa.' },
+    { id: 'dosis', title: 'Dudas de dosimetría', meta: 'Ayer', excerpt: 'Cálculo de actividad y recomendaciones por tratamiento.' },
+    { id: 'seguimiento', title: 'Seguimiento post-terapia', meta: 'Lun', excerpt: 'Síntomas reportados y próximos controles.' },
+  ];
+
   const selectedDoctorSummary = selectedDoctors.length
-    ? doctors.filter((doctor) => selectedDoctors.includes(doctor.id)).map((doctor) => doctor.name).join(', ')
+    ? doctors.filter((d) => selectedDoctors.includes(d.id)).map((d) => d.name).join(', ')
     : 'Sin invitados seleccionados';
 
   useEffect(() => {
-    let active = true;
     fetch('/api/users').then(r => r.json()).then(apiUsers => {
-      if (!active || !Array.isArray(apiUsers)) return;
-      const doctorList = apiUsers
+      if (!Array.isArray(apiUsers)) return;
+      const list = apiUsers
         .filter((u: any) => ['admin', 'facultativo', 'doctor', 'Doctor'].includes(u.role))
-        .map((u: any) => ({
-          id: u.id,
-          name: `${u.firstName} ${u.lastName}`.trim() || u.email,
-          specialty: u.specialty || u.role,
-        }));
-      setDoctors(doctorList);
-      setActiveRixChat((current: any) => current || doctorList[0]?.id || '');
+        .map((u: any) => ({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim() || u.email, specialty: u.specialty || u.role }));
+      setDoctors(list);
+      setActiveRixChat((c: any) => c || list[0]?.id || '');
     }).catch(() => {});
-    return () => { active = false; };
   }, []);
 
-  const toggleDoctor = (doctor: string | number) => {
-    setSelectedDoctors((current) => current.includes(doctor)
-      ? current.filter(item => item !== doctor)
-      : [...current, doctor]);
-  };
+  // Auto-resize textarea
+  useEffect(() => {
+    if (taRef.current) {
+      taRef.current.style.height = 'auto';
+      taRef.current.style.height = taRef.current.scrollHeight + 'px';
+    }
+  }, [rixPrompt]);
+
+  // Scroll messages to bottom
+  useEffect(() => {
+    if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight;
+  }, [rixMsgs]);
 
   const sendRixMessage = () => {
+    const text = rixPrompt.trim();
+    if (!text) return;
     setIsRixConversationOpen(true);
     setShowHistoryPanel(false);
     setShowGroupsPanel(false);
-    if (!rixPrompt.trim()) return;
-    const sent = sendQuery(rixPrompt.trim());
-    if (sent) {
-      setRixSubmitStatus('');
-    } else {
-      setRixSubmitStatus('No se pudo enviar. El WebSocket de Rix no está conectado.');
-    }
+    setRixMsgs(prev => [...prev, { role: 'user', text, time: new Date().toISOString() }]);
     setRixPrompt('');
+    setRixSubmitStatus('');
+
+    // Try WebSocket first
+    const sent = sendQuery(text);
+    if (!sent) {
+      // Fallback: call directly via HTTP
+      const ctx = selectedDoctors.length > 0
+        ? `Contexto clínico — médicos presentes: ${selectedDoctorSummary}. `
+        : '';
+      fetch('/api/config/ai/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: text, systemContext: ctx || undefined, thinking: thinkingMode }),
+      }).then(r => r.json()).then(data => {
+        setRixMsgs(prev => [...prev, { role: 'assistant', text: data.response || data.error || 'Sin respuesta', time: new Date().toISOString() }]);
+      }).catch(() => {
+        setRixSubmitStatus('No se pudo contactar con Rix. Intenta de nuevo.');
+      });
+    }
   };
+
+  const toggleDoctor = (id: string | number) => {
+    setSelectedDoctors(c => c.includes(id) ? c.filter(i => i !== id) : [...c, id]);
+  };
+
+  const activeChat = chats.find(c => c.id === activeRixChat) || chats[0];
 
   return (
     <div
@@ -1766,23 +1797,43 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
           transition: 'min-height 0.56s cubic-bezier(0.16, 1, 0.3, 1), transform 0.56s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.3s ease, box-shadow 0.3s ease',
         }}>
           {isRixConversationOpen && (
-            <div style={{
-              display: 'grid',
-              gap: 12,
-              marginBottom: 14,
+            <div ref={msgsRef} style={{
+              display: 'flex', flexDirection: 'column', gap: 10,
+              marginBottom: 12, maxHeight: isMobile ? 240 : 280, overflowY: 'auto',
               animation: 'rixPanelReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1)',
             }}>
-	              <EmptyInline text="La conversación de Rix se cargará cuando el asistente procese la consulta." />
+              {rixMsgs.length === 0 && (
+                <EmptyInline text="Escribe tu consulta clínica y Rix te responderá con MiniMax M2.7." />
+              )}
+              {rixMsgs.map((m, i) => (
+                <div key={i} style={{
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                }}>
+                  <div style={{
+                    maxWidth: '85%',
+                    padding: '10px 14px',
+                    borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    background: m.role === 'user' ? 'var(--p, #6d32e8)' : 'var(--b, #f3f4f6)',
+                    color: m.role === 'user' ? '#ffffff' : 'var(--t, #111827)',
+                    fontSize: 13, lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  }}>
+                    {m.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
           <textarea
+            ref={taRef}
             value={rixPrompt}
-            onChange={(event) => setRixPrompt(event.target.value)}
+            onChange={(e) => setRixPrompt(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendRixMessage(); } }}
             placeholder="Escribe tu consulta para Rix..."
+            rows={1}
             style={{
               width: '100%',
-              minHeight: isRixConversationOpen ? (isMobile ? 170 : 160) : (expanded ? 118 : 92),
-              resize: 'vertical',
               border: 'none',
               outline: 'none',
               background: 'transparent',
@@ -1791,41 +1842,32 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               fontSize: expanded ? 15 : 13,
               lineHeight: 1.55,
               boxSizing: 'border-box',
+              resize: 'none',
+              overflow: 'hidden',
             }}
           />
-	          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 }}>
-            <button type="button" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 12px',
-              borderRadius: 12,
-              border: '1px solid var(--br, #e5e7eb)',
-              background: 'var(--b, #f8fafc)',
-              color: 'var(--t, #111827)',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer',
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 }}>
+            <button type="button" onClick={() => setThinkingMode(!thinkingMode)} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '9px 12px', borderRadius: 12,
+              border: thinkingMode ? '1px solid var(--p, #6d32e8)' : '1px solid var(--br, #e5e7eb)',
+              background: thinkingMode ? 'color-mix(in srgb, var(--p, #6d32e8) 10%, #ffffff)' : 'var(--b, #f8fafc)',
+              color: thinkingMode ? 'var(--p, #6d32e8)' : 'var(--t, #111827)',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
             }}>
               <Sparkles size={15} />
-              Pensar mejor
+              {thinkingMode ? 'Pensando...' : 'Pensar mejor'}
             </button>
-	            <button type="button" aria-label="Enviar mensaje a Rix" onClick={sendRixMessage} style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 40,
-              height: 40,
-              borderRadius: 14,
-              border: 'none',
-              background: 'var(--p, #3b82f6)',
-              color: '#ffffff',
-              cursor: 'pointer',
-	            }}>
-	              <Send size={17} />
-	            </button>
-	          </div>
-	          {rixSubmitStatus && <div style={{ marginTop: 10 }}><EmptyInline text={rixSubmitStatus} /></div>}
+            <button type="button" aria-label="Enviar mensaje a Rix" onClick={sendRixMessage} style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 40, height: 40, borderRadius: 14, border: 'none',
+              background: rixPrompt.trim() ? 'var(--p, #3b82f6)' : 'var(--br)',
+              color: '#ffffff', cursor: rixPrompt.trim() ? 'pointer' : 'default',
+            }}>
+              <Send size={17} />
+            </button>
+          </div>
+          {rixSubmitStatus && <div style={{ marginTop: 10 }}><EmptyInline text={rixSubmitStatus} /></div>}
 	        </div>
 
         {expanded && !isRixConversationOpen && (
