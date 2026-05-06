@@ -123,7 +123,7 @@ export default function PatientList() {
       </div>
 
       <style>{`
-        @media (max-width: 1180px) {
+        @media (max-width: 1400px) {
           .responsive-table-card { overflow: visible !important; background: transparent !important; border: none !important; }
           .responsive-table-card table, .responsive-table-card tbody, .responsive-table-card tr, .responsive-table-card td { display: block; width: 100%; }
           .responsive-table-card thead { display: none; }

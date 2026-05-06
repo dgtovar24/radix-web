@@ -1,0 +1,28 @@
+---
+import { ViewTransitions } from "astro:transitions";
+import DashboardLayout from '../components/DashboardLayout';
+import AnalyticsPage from '../components/AnalyticsPage';
+import '../styles/global.css';
+
+const userCookie = Astro.cookies.get('radix-user')?.value;
+let userName = 'Doctor';
+let userRole = 'Doctor';
+let userId: number | undefined = undefined;
+let userEmail: string | undefined = undefined;
+
+if (userCookie) {
+  try {
+    const user = JSON.parse(decodeURIComponent(userCookie));
+    if (user.firstName) userName = user.firstName;
+    if (user.role) userRole = user.role;
+    if (user.id) userId = user.id;
+    if (user.email) userEmail = user.email;
+  } catch {}
+}
+---
+
+<ViewTransitions>
+  <DashboardLayout userName={userName} userRole={userRole} userId={userId} userEmail={userEmail} configPage="analytics" client:only="react">
+    <AnalyticsPage client:only="react" />
+  </DashboardLayout>
+</ViewTransitions>

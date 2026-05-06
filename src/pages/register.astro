@@ -24,6 +24,7 @@ if (userCookie) {
 if (!userRole) {
   return Astro.redirect('/login');
 }
+const initialRightSidebarOpen = Astro.cookies.get('radix-right-sidebar')?.value !== 'false';
 ---
 <!DOCTYPE html>
 <html lang="es" class="light">
@@ -70,7 +71,7 @@ if (!userRole) {
 </head>
 <body style="background: var(--b);">
   <ThemeProvider client:load>
-    <DashboardLayout client:load userName={userName} userRole={userRole}>
+    <DashboardLayout client:load userName={userName} userRole={userRole} initialRightSidebarOpen={initialRightSidebarOpen}>
       <div style="max-width: 520px; margin: 0 auto;">
         <div style="margin-bottom: 24px;">
           <h1 style="font-size: 22; font-weight: 700; color: var(--t); font-family: var(--font-display); letter-spacing: -0.02em; margin: 0 0 6px;">

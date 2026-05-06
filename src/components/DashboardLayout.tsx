@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Component, useEffect, useMemo, useState } from 'react';
+import React, { Component, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import ThemeProvider from './ThemeProvider';
 import ConfigurationPage from './ConfigurationPage';
 import RadixLogo from './RadixLogo';
@@ -12,6 +12,7 @@ import {
   type User as ApiUser,
 } from '../services/api';
 import { useWebSocketChat, useWebSocketRix } from '../hooks/useWebSocketChat';
+import { ModulesProvider } from '../context/ModulesContext';
 import {
   Activity,
   ArrowUpRight,
@@ -50,6 +51,7 @@ interface DashboardLayoutProps {
   userRole: string;
   userId?: number;
   userEmail?: string;
+  initialRightSidebarOpen?: boolean;
   configPage?: 'configuration' | 'patients' | 'treatments' | 'devices' | 'rix' | 'profile';
 }
 
@@ -85,15 +87,17 @@ class ShellErrorBoundary extends Component<{ children: React.ReactNode; label: s
   }
 }
 
-export default function DashboardLayout({ children, userName, userRole, userId, userEmail, configPage }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, userName, userRole, userId, userEmail, initialRightSidebarOpen = true, configPage }: DashboardLayoutProps) {
   return (
     <ThemeProvider>
-      <DashboardLayoutInner {...{ children, userName, userRole, userId, userEmail, configPage }} />
+      <ModulesProvider>
+        <DashboardLayoutInner {...{ children, userName, userRole, userId, userEmail, initialRightSidebarOpen, configPage }} />
+      </ModulesProvider>
     </ThemeProvider>
   );
 }
 
-function DashboardLayoutInner({ children, userName, userRole, userId, userEmail, configPage }: DashboardLayoutProps) {
+function DashboardLayoutInner({ children, userName, userRole, userId, userEmail, initialRightSidebarOpen = true, configPage }: DashboardLayoutProps) {
   const isRixRoute = configPage === 'rix';
   const [activeRightTab, setActiveRightTab] = useState<RightPanelTab>(isRixRoute ? 'rix' : 'chat');
   const [isRixExpanding, setIsRixExpanding] = useState(isRixRoute);
@@ -128,16 +132,16 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
     return 'home';
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setActiveNav(resolveActiveNav());
   }, [configPage]);
 
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('radix_right_sidebar');
-      return stored !== null ? stored === 'true' : true;
+      return stored !== null ? stored === 'true' : initialRightSidebarOpen;
     }
-    return true;
+    return initialRightSidebarOpen;
   });
 
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(() => {
@@ -147,15 +151,40 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
     }
     return true;
   });
+  const [sidebarPrefsReady, setSidebarPrefsReady] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(1440);
+  const updateRightSidebarOpen = (next: boolean) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('radix_right_sidebar', String(next));
+      document.cookie = `radix-right-sidebar=${String(next)}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+    setIsRightSidebarOpen(next);
+  };
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const syncSidebarPrefs = () => {
+      const storedRight = localStorage.getItem('radix_right_sidebar');
+      const storedLeft = localStorage.getItem('radix_left_sidebar');
+      setIsRightSidebarOpen(storedRight !== null ? storedRight === 'true' : initialRightSidebarOpen);
+      if (storedLeft !== null) setIsLeftSidebarOpen(storedLeft === 'true');
+    };
+    syncSidebarPrefs();
+    const timers = [0, 80, 240, 600].map(delay => window.setTimeout(syncSidebarPrefs, delay));
+    setSidebarPrefsReady(true);
+    return () => timers.forEach(window.clearTimeout);
+  }, [activeNav, configPage, initialRightSidebarOpen]);
+
+  useEffect(() => {
+    if (!sidebarPrefsReady) return;
     localStorage.setItem('radix_right_sidebar', String(isRightSidebarOpen));
-  }, [isRightSidebarOpen]);
+    document.cookie = `radix-right-sidebar=${String(isRightSidebarOpen)}; path=/; max-age=31536000; SameSite=Lax`;
+  }, [isRightSidebarOpen, sidebarPrefsReady]);
 
   useEffect(() => {
+    if (!sidebarPrefsReady) return;
     localStorage.setItem('radix_left_sidebar', String(isLeftSidebarOpen));
-  }, [isLeftSidebarOpen]);
+  }, [isLeftSidebarOpen, sidebarPrefsReady]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -182,7 +211,9 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
       setActiveRightTab('rix');
       setIsRixExpanding(true);
       setIsChatExpanded(false);
-      setIsRightSidebarOpen(true);
+      if (typeof window !== 'undefined' && localStorage.getItem('radix_right_sidebar') === null) {
+        updateRightSidebarOpen(true);
+      }
     }
   }, [isRixRoute]);
 
@@ -214,7 +245,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
     if (typeof window !== 'undefined') {
       window.scrollTo({ left: 0, top: 0 });
     }
-    setIsRightSidebarOpen(true);
+    updateRightSidebarOpen(true);
     setActiveRightTab('rix');
     setIsRixExpanding(true);
     setIsChatExpanded(false);
@@ -228,7 +259,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
 
   const openInternalChat = () => {
     setActiveRightTab('chat');
-    setIsRightSidebarOpen(true);
+    updateRightSidebarOpen(true);
     setIsChatExpanded(true);
     setIsRixExpanding(false);
     if (typeof window !== 'undefined') {
@@ -238,7 +269,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
 
   const toggleInternalChatExpanded = () => {
     setActiveRightTab('chat');
-    setIsRightSidebarOpen(true);
+    updateRightSidebarOpen(true);
     setIsRixExpanding(false);
     setIsChatExpanded((current) => {
       const next = !current;
@@ -251,7 +282,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
 
   const openMobileAssistant = () => {
     setActiveRightTab('chat');
-    setIsRightSidebarOpen(true);
+    updateRightSidebarOpen(true);
     setIsRixExpanding(false);
     setIsChatExpanded(true);
   };
@@ -270,7 +301,9 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
   const isCompact = viewportWidth <= 1180;
   const useOverlayPanels = isCompact;
   const leftColumnPx = !useOverlayPanels && isLeftSidebarOpen ? 240 : 0;
-  const compactRightPx = !useOverlayPanels && isRightSidebarOpen ? Math.min(340, Math.max(300, Math.round(viewportWidth * 0.3))) : 0;
+  const storedRightSidebarValue = typeof window !== 'undefined' ? localStorage.getItem('radix_right_sidebar') : null;
+  const rightSidebarVisible = storedRightSidebarValue !== null ? storedRightSidebarValue === 'true' : isRightSidebarOpen;
+  const compactRightPx = !useOverlayPanels && rightSidebarVisible ? Math.min(340, Math.max(300, Math.round(viewportWidth * 0.3))) : 0;
   const gridTemplateColumns = useOverlayPanels
     ? 'minmax(0, 1fr)'
     : assistantExpanded
@@ -293,6 +326,8 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
   return (
     <div
       data-radix-shell="true"
+      data-right-open={rightSidebarVisible ? 'true' : 'false'}
+      data-right-state={isRightSidebarOpen ? 'true' : 'false'}
       style={{
         display: 'grid',
         gridTemplateColumns,
@@ -348,11 +383,11 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
         </button>}
 
         {!useOverlayPanels && <button
-          onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-          style={roundToggleStyle(isRightSidebarOpen ? -14 : 14, 'right')}
-          title={isRightSidebarOpen ? 'Ocultar panel' : 'Mostrar panel'}
+          onClick={() => updateRightSidebarOpen(!rightSidebarVisible)}
+          style={roundToggleStyle(rightSidebarVisible ? -14 : 14, 'right')}
+          title={rightSidebarVisible ? 'Ocultar panel' : 'Mostrar panel'}
         >
-          {isRightSidebarOpen ? <ChevronRight size={16} strokeWidth={2.5} /> : <ChevronLeft size={16} strokeWidth={2.5} />}
+          {rightSidebarVisible ? <ChevronRight size={16} strokeWidth={2.5} /> : <ChevronLeft size={16} strokeWidth={2.5} />}
         </button>}
 
         <main
@@ -450,7 +485,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
       <ShellErrorBoundary label="assistant">
       <RightAssistantColumn
         expanded={assistantExpanded}
-        open={isRightSidebarOpen}
+        open={rightSidebarVisible}
         isMobile={useOverlayPanels}
         activeTab={activeRightTab}
         chatExpanded={isChatExpanded}
@@ -499,15 +534,17 @@ function LeftSidebar({
   userRole: string;
 }) {
   const isAdminRole = userRole === 'ADMIN' || userRole === 'Admin';
+  const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const navItems = [
-    { id: 'home', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-    { id: 'pacientes', label: 'Pacientes', icon: Users, href: '/pacientes' },
-    { id: 'tratamientos', label: 'Tratamientos', icon: Activity, href: '/tratamientos' },
-    { id: 'alertas', label: 'Alertas', icon: Bell, href: '/alertas' },
-    { id: 'usuarios', label: 'Usuarios', icon: Shield, href: '/usuarios' },
-    { id: 'chat', label: 'Chat interno', icon: MessageCircle, onClick: onChatClick },
-    { id: 'rix', label: 'Rix', icon: Bot, href: '/rix' },
-    ...(isAdminRole ? [{ id: 'settings', label: 'Configuración', icon: Settings, href: '/configuracion' }] : []),
+    { id: 'home', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', description: 'Resumen operativo: pacientes, tratamientos, alertas y radiación.' },
+    { id: 'tratamientos', label: 'Tratamientos', icon: Activity, href: '/tratamientos', description: 'Planes activos, dosis, confinamiento y estado clínico.' },
+    { id: 'pacientes', label: 'Pacientes', icon: Users, href: '/pacientes', description: 'Expedientes, contacto, asignaciones y seguimiento de pacientes.' },
+    { id: 'alertas', label: 'Alertas', icon: Bell, href: '/alertas', description: 'Avisos urgentes con acceso rápido a paciente, llamada y mensaje.' },
+    { id: 'usuarios', label: 'Usuarios', icon: Shield, href: '/usuarios', description: 'Roles, facultativos, administradores y permisos del sistema.' },
+    { id: 'chat', label: 'Chat interno', icon: MessageCircle, onClick: onChatClick, description: 'Conversaciones internas entre usuarios y grupos clínicos.' },
+    { id: 'rix', label: 'Rix', icon: Bot, href: '/rix', description: 'Asistente IA para consultar contexto clínico y sesiones grupales.' },
+    { id: 'analytics', label: 'Análisis', icon: BarChart3, href: '/analisis', description: 'Analíticas de datos, gráficos personalizados y exploración de métricas.' },
+    ...(isAdminRole ? [{ id: 'settings', label: 'Configuración', icon: Settings, href: '/configuracion', description: 'SMTP, IA, API keys, seguridad e integraciones.' }] : []),
   ];
 
   const sidebar = (
@@ -600,17 +637,53 @@ function LeftSidebar({
               </>
             );
 
+            const tooltip = hoveredNav === item.id && !isMobile && (
+              <span style={{
+                position: 'absolute',
+                left: 'calc(100% + 12px)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 180,
+                width: 220,
+                padding: '10px 12px',
+                borderRadius: 12,
+                border: '1px solid var(--br, #e5e7eb)',
+                background: 'var(--t, #111827)',
+                color: 'var(--sf, #ffffff)',
+                boxShadow: '0 16px 36px rgba(15,23,42,0.18)',
+                fontSize: 11,
+                fontWeight: 700,
+                lineHeight: 1.35,
+                pointerEvents: 'none',
+              }}>
+                {item.description}
+              </span>
+            );
+
             return 'onClick' in item ? (
-              <button key={item.id} type="button" onClick={item.onClick} style={commonStyle}>
+              <button
+                key={item.id}
+                type="button"
+                onClick={item.onClick}
+                onMouseEnter={() => setHoveredNav(item.id)}
+                onMouseLeave={() => setHoveredNav(null)}
+                title={item.description}
+                style={commonStyle}
+              >
                 {content}
+                {tooltip}
               </button>
             ) : (
               <a
                 key={item.id}
                 href={item.href}
+                onMouseEnter={() => setHoveredNav(item.id)}
+                onMouseLeave={() => setHoveredNav(null)}
+                title={item.description}
                 style={commonStyle}
               >
                 {content}
+                {tooltip}
               </a>
             );
           })}
@@ -719,8 +792,8 @@ function LeftSidebar({
 function MobileFooterBar({ activeNav, activeRightTab }: { activeNav: string; activeRightTab: RightPanelTab }) {
   const navItems = [
     { id: 'home', label: 'Inicio', icon: LayoutDashboard, href: '/dashboard' },
-    { id: 'pacientes', label: 'Pacientes', icon: Users, href: '/pacientes' },
     { id: 'tratamientos', label: 'Tratamientos', icon: Activity, href: '/tratamientos' },
+    { id: 'pacientes', label: 'Pacientes', icon: Users, href: '/pacientes' },
     { id: 'alertas', label: 'Alertas', icon: Bell, href: '/alertas' },
     { id: 'usuarios', label: 'Usuarios', icon: Shield, href: '/usuarios' },
     { id: 'rix', label: 'Rix', icon: Bot, href: '/rix' },
@@ -890,7 +963,7 @@ function RightAssistantColumn({
           expanded={expanded}
           isMobile={isMobile}
         />
-        {activeTab === 'rix' ? <RixPanel expanded={expanded} isMobile={isMobile} /> : <InternalChatPanel isMobile={isMobile} />}
+        {activeTab === 'rix' ? <RixPanel expanded={expanded} isMobile={isMobile} /> : <InternalChatPanel expanded={expanded} isMobile={isMobile} />}
       </div>
     </aside>
   );
@@ -1024,7 +1097,7 @@ function RightPanelTabs({
   );
 }
 
-function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
+function InternalChatPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean }) {
   const [users, setUsers] = useState<any[]>([]);
   const [tab, setTab] = useState<'usuarios' | 'chats' | 'grupos'>('usuarios');
   const [query, setQuery] = useState('');
@@ -1068,44 +1141,108 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
   };
 
   const wsDot = { width: 6, height: 6, borderRadius: '50%', background: connected ? '#10b981' : '#ef4444' };
+  const tabItems = [
+    { id: 'usuarios' as const, label: 'Usuarios', short: 'Usu.', icon: Users },
+    { id: 'chats' as const, label: 'Chats', short: 'Chat', icon: MessageCircle },
+    { id: 'grupos' as const, label: 'Grupos', short: 'Grupo', icon: UserPlus },
+  ];
+  const useSideRail = expanded && !isMobile;
+  const renderTabButton = (item: typeof tabItems[number], compact = false) => {
+    const active = tab === item.id;
+    const Icon = item.icon;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => setTab(item.id)}
+        style={{
+          width: compact ? 46 : '100%',
+          minHeight: compact ? 46 : 38,
+          display: 'flex',
+          flexDirection: compact ? 'column' : 'row',
+          alignItems: 'center',
+          justifyContent: compact ? 'center' : 'flex-start',
+          gap: compact ? 2 : 8,
+          padding: compact ? 4 : '8px 10px',
+          border: active ? '1px solid color-mix(in srgb, var(--p, #7c3aed) 24%, transparent)' : '1px solid transparent',
+          borderRadius: 12,
+          background: active ? 'color-mix(in srgb, var(--p, #7c3aed) 11%, #ffffff)' : 'transparent',
+          color: active ? 'var(--p, #7c3aed)' : 'var(--t-s, #6b7280)',
+          fontSize: compact ? 9 : 11,
+          fontWeight: 900,
+          cursor: 'pointer',
+          fontFamily: "'Inter', sans-serif",
+          transition: 'background 0.18s ease, border-color 0.18s ease, color 0.18s ease',
+        }}
+      >
+        <Icon size={compact ? 16 : 15} strokeWidth={2.2} />
+        <span>{compact ? item.short : item.label}</span>
+      </button>
+    );
+  };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'row', height: '100%', overflow: 'hidden', fontFamily: "'Inter', sans-serif" }}>
-      {/* LEFT TABS — vertical */}
-      <div style={{
-        width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 4, padding: '12px 6px', borderRight: '1px solid var(--br, #e5e7eb)',
-        background: 'var(--b, #f8fafc)',
-      }}>
-        {[
-          ['usuarios', Users],
-          ['chats', MessageCircle],
-          ['grupos', UserPlus],
-        ].map(([id, Icon]) => {
-          const active = tab === id;
-          const C = Icon as any;
-          return (
-            <button key={id as string} type="button" onClick={() => setTab(id as any)}
-              style={{
-                width: 40, height: 40, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 2,
-                border: 'none', borderRadius: 12,
-                background: active ? 'color-mix(in srgb, var(--p, #7c3aed) 10%, #ffffff)' : 'transparent',
-                color: active ? 'var(--p, #7c3aed)' : 'var(--t-s, #6b7280)',
-                fontSize: 9, fontWeight: 800, cursor: 'pointer',
-              }}>
-              <C size={16} strokeWidth={2} />
-              <span>{id === 'usuarios' ? 'Usu.' : id === 'chats' ? 'Chat' : 'Grupo'}</span>
-            </button>
-          );
-        })}
-        <div style={{ marginTop: 'auto' }} title={connected ? 'Conectado' : 'Desconectado'}>
-          <div style={wsDot} />
+    <div style={{
+      flex: 1,
+      display: 'flex',
+      flexDirection: useSideRail ? 'row' : 'column',
+      height: '100%',
+      overflow: 'hidden',
+      fontFamily: "'Inter', sans-serif",
+      padding: useSideRail ? '12px 12px 0' : '12px 14px 0',
+      gap: useSideRail ? 10 : 8,
+    }}>
+      {useSideRail ? (
+        <div
+          data-chat-side-rail="true"
+          style={{
+            width: 64,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 6,
+            padding: 8,
+            border: '1px solid var(--br, #e5e7eb)',
+            borderRadius: 18,
+            background: 'color-mix(in srgb, var(--b, #f8fafc) 72%, var(--sf, #ffffff))',
+            boxShadow: '0 12px 28px rgba(15,23,42,0.05)',
+            flexShrink: 0,
+          }}
+        >
+          {tabItems.map((item) => renderTabButton(item, true))}
+          <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'center', paddingBottom: 4 }} title={connected ? 'Conectado' : 'Desconectado'}>
+            <div style={wsDot} />
+          </div>
         </div>
-      </div>
+      ) : (
+        <div
+          data-chat-top-tabs="true"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+            gap: 5,
+            padding: 5,
+            border: '1px solid var(--br, #e5e7eb)',
+            borderRadius: 16,
+            background: 'var(--b, #f8fafc)',
+            boxShadow: '0 8px 20px rgba(15,23,42,0.04)',
+          }}
+        >
+          {tabItems.map((item) => renderTabButton(item))}
+        </div>
+      )}
 
       {/* RIGHT CONTENT */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        overflow: 'hidden',
+        border: useSideRail ? '1px solid var(--br, #e5e7eb)' : 'none',
+        borderRadius: useSideRail ? 18 : 0,
+        background: 'var(--sf, #ffffff)',
+      }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '10px 14px', borderBottom: '1px solid var(--br, #e5e7eb)',
@@ -1214,6 +1351,23 @@ const pBtnStyle: React.CSSProperties = {
   background: 'var(--sf)', color: 'var(--t-s)', display: 'flex',
   alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
 };
+
+function EmptyInline({ text }: { text: string }) {
+  return (
+    <div style={{
+      padding: '10px 12px',
+      borderRadius: 12,
+      border: '1px dashed var(--br, #e5e7eb)',
+      background: 'color-mix(in srgb, var(--b, #f8fafc) 72%, var(--sf, #ffffff))',
+      color: 'var(--t-s, #6b7280)',
+      fontSize: 12,
+      fontWeight: 700,
+      lineHeight: 1.45,
+    }}>
+      {text}
+    </div>
+  );
+}
 
 function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean }) {
   const [chats, setChats] = useState<any[]>([]);
@@ -2161,12 +2315,12 @@ function roundToggleStyle(offset: number, side: 'left' | 'right'): React.CSSProp
     borderRadius: '50%',
     background: 'var(--sf, #ffffff)',
     border: '1px solid var(--br, #f3f4f6)',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    boxShadow: '0 8px 22px rgba(15,23,42,0.12)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    zIndex: 10,
+    zIndex: 140,
     color: 'var(--t-s, #6b7280)',
     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
     outline: 'none',

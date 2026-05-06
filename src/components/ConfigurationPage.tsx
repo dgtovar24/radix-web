@@ -20,8 +20,9 @@ import {
 import { useTheme } from './ThemeProvider';
 import { COLOR_DEFINITIONS } from '../data/palettes';
 import { oauthClients, systemSettings, type OAuthClient, type SystemSettingsResponse, type TokenResponse } from '../services/api';
+import { useModules } from '../context/ModulesContext';
 
-type SettingsTab = 'appearance' | 'smtp' | 'ai' | 'security' | 'organization' | 'notifications' | 'integrations' | 'apiKeys' | 'data';
+type SettingsTab = 'appearance' | 'smtp' | 'ai' | 'security' | 'organization' | 'notifications' | 'integrations' | 'apiKeys' | 'data' | 'modules';
 
 const aiModels = [
   { id: 'gpt-4.1', name: 'GPT-4.1', detail: 'Mayor calidad para razonamiento clínico y explicaciones largas.' },
@@ -41,6 +42,7 @@ const tabs: Array<{ id: SettingsTab; label: string; icon: typeof Palette }> = [
   { id: 'integrations', label: 'Integraciones', icon: Link2 },
   { id: 'apiKeys', label: 'Credenciales API', icon: KeyRound },
   { id: 'data', label: 'Datos', icon: Database },
+  { id: 'modules', label: 'Módulos', icon: ShieldCheck },
 ];
 
 function randomCredential(prefix = '') {
@@ -525,6 +527,9 @@ export default function ConfigurationPage() {
               </div>
             </SectionCard>
           )}
+          {activeTab === 'modules' && (
+            <ModulesTab />
+          )}
         </main>
       </div>
       <style>{`
@@ -785,3 +790,47 @@ const modelCardStyle: CSSProperties = {
   textAlign: 'left',
   fontFamily: "'Inter', sans-serif",
 };
+
+function ModulesTab() {
+  const { modules, loading, toggleModule } = useModules();
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--t-s)', fontSize: 14 }}>Cargando módulos...</div>;
+
+  return (
+    <SectionCard icon={ShieldCheck} title="Módulos del Sistema" subtitle="Activa o desactiva funcionalidades de la organización.">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {modules.map(mod => (
+          <div key={mod.moduleKey} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 16px', borderRadius: 12,
+            background: 'var(--sf, #ffffff)', border: '1px solid var(--br, #e5e7eb)',
+          }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t, #111827)' }}>{mod.moduleName}</div>
+              <div style={{ fontSize: 11, color: 'var(--t-s, #6b7280)', marginTop: 2 }}>
+                {mod.moduleKey === 'patient_assignment' && 'Permite asignar pacientes a doctores y ver la relación en la tabla de facultativos.'}
+                {mod.moduleKey === 'room_assignment' && 'Muestra el campo de habitación en tratamientos y la columna Sala en las tablas.'}
+                {mod.moduleKey === 'doctor_schedules' && 'Activa la pestaña Horarios con la rejilla semanal de turnos de los doctores.'}
+                {mod.moduleKey === 'quick_login' && 'Habilita el inicio de sesión rápido con PIN y selector de doctores en el login.'}
+              </div>
+            </div>
+            <button
+              onClick={() => toggleModule(mod.moduleKey, !mod.isEnabled)}
+              style={{
+                width: 48, height: 28, borderRadius: 14, border: 'none',
+                background: mod.isEnabled ? 'var(--p, #6b32e8)' : 'var(--br, #d1d5db)',
+                cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
+                flexShrink: 0,
+              }}>
+              <div style={{
+                width: 22, height: 22, borderRadius: '50%', background: '#fff',
+                position: 'absolute', top: 3,
+                left: mod.isEnabled ? 23 : 3, transition: 'left 0.2s',
+              }} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </SectionCard>
+  );
+}

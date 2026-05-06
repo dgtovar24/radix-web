@@ -17,6 +17,8 @@ if (userCookie) {
     userRole = user.role || 'Doctor';
   } catch (e) {}
 }
+
+const initialRightSidebarOpen = Astro.cookies.get('radix-right-sidebar')?.value !== 'false';
 ---
 
 <!DOCTYPE html>
@@ -51,7 +53,7 @@ if (userCookie) {
 </head>
 <body style="background: var(--b, #ffffff);">
   <ThemeProvider client:load>
-    <DashboardLayout client:load userName={userName} userRole={userRole}>
+    <DashboardLayout client:load userName={userName} userRole={userRole} initialRightSidebarOpen={initialRightSidebarOpen}>
       <PatientDetails client:load patientId={id} />
     </DashboardLayout>
   </ThemeProvider>

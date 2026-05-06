@@ -17,6 +17,7 @@ if (userCookie) {
     console.error('Failed to parse user cookie');
   }
 }
+const initialRightSidebarOpen = Astro.cookies.get('radix-right-sidebar')?.value !== 'false';
 ---
 <!DOCTYPE html>
 <html lang="es" class="light">
@@ -65,7 +66,7 @@ if (userCookie) {
 </head>
 <body style="background: var(--b);">
   <ThemeProvider client:load>
-    <DashboardLayout client:load userName={userName} userRole={userRole} configPage="configuration" />
+    <DashboardLayout client:load userName={userName} userRole={userRole} initialRightSidebarOpen={initialRightSidebarOpen} configPage="configuration" />
   </ThemeProvider>
 </body>
 </html>
