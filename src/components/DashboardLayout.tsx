@@ -1596,17 +1596,13 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
           transition: 'max-width 0.42s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.3s ease',
         }}
       >
-        <div style={{
+        <div className={rixMsgs.length > 0 ? 'rix-hero-collapsed' : 'rix-hero-visible'} style={{
           display: 'grid',
           gridTemplateColumns: expanded && !isMobile ? '210px minmax(0, 1fr)' : '1fr',
           gap: expanded ? 18 : 16,
           alignItems: 'center',
           marginBottom: isRixConversationOpen ? (rixMsgs.length > 0 ? 6 : 10) : (expanded ? 18 : 22),
-          opacity: rixMsgs.length > 0 ? 0 : 1,
-          maxHeight: rixMsgs.length > 0 ? '0px' : expanded ? '220px' : '180px',
           overflow: 'hidden',
-          transform: rixMsgs.length > 0 ? 'translateY(-24px) scale(0.95)' : 'translateY(0) scale(1)',
-          transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), maxHeight 0.8s cubic-bezier(0.4, 0, 0.2, 1), marginBottom 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
         }}>
           <div style={{
             position: 'relative',
@@ -1924,6 +1920,12 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               )}
               <style>{`
                 @keyframes rixPulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+                @keyframes rixHeroOut {
+                  0% { opacity:1; max-height:220px; transform:translateY(0) scale(1); }
+                  100% { opacity:0; max-height:0; transform:translateY(-30px) scale(0.9); }
+                }
+                .rix-hero-collapsed { animation: rixHeroOut 0.8s cubic-bezier(0.4,0,0.2,1) forwards; max-height:0 !important; opacity:0 !important; }
+                .rix-hero-visible { max-height: 220px; opacity: 1; }
               `}</style>
             </div>
           )}
