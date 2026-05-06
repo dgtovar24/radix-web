@@ -12,7 +12,7 @@ const chartIcons: Record<string, any> = { BarChart3, TrendingUp, PieChart, AreaC
 interface Column { key: string; label: string; type: string; }
 interface Table { id: string; label: string; columns: Column[]; }
 interface ChartType { id: string; label: string; icon: string; }
-interface SavedChart { id: string; label: string; table: string; xColumn: string; yColumn: string; chartType: string; createdAt: string; }
+interface SavedChart { id: string; label: string; table: string; xColumn: string; yColumn: string; chartType: string; createdAt: string; table2?: string; joinField?: string; }
 
 function loadSaved(): SavedChart[] {
   try { return JSON.parse(localStorage.getItem('radix-saved-charts') || '[]'); } catch { return []; }
@@ -28,6 +28,9 @@ export default function AnalyticsPage() {
   const [selChart, setSelChart] = useState('bar');
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [useTwoTables, setUseTwoTables] = useState(false);
+  const [selTable2, setSelTable2] = useState('');
+  const [joinField, setJoinField] = useState('');
   const [modal, setModal] = useState<any>(null);
   const [ChartComponents, setChartComponents] = useState<any>(null);
   const [savedCharts, setSavedCharts] = useState<SavedChart[]>([]);
@@ -51,7 +54,7 @@ export default function AnalyticsPage() {
 
   const confirmSave = () => {
     if (!saveName.trim()) return;
-    const chart: SavedChart = { id: Date.now().toString(), label: saveName.trim(), table: selTable, xColumn: selX, yColumn: selY, chartType: selChart, createdAt: new Date().toISOString() };
+    const chart: SavedChart = { id: Date.now().toString(), label: saveName.trim(), table: selTable, xColumn: selX, yColumn: selY, chartType: selChart, createdAt: new Date().toISOString(), table2: useTwoTables ? selTable2 : undefined, joinField: useTwoTables ? joinField : undefined };
     saveCharts([...savedCharts, chart]);
     setSavedCharts(loadSaved());
     setShowSaveModal(false);
@@ -62,6 +65,8 @@ export default function AnalyticsPage() {
     setSelX(c.xColumn);
     setSelY(c.yColumn);
     setSelChart(c.chartType);
+    if (c.table2 && c.joinField) { setUseTwoTables(true); setSelTable2(c.table2); setJoinField(c.joinField); }
+    else setUseTwoTables(false);
     setTimeout(() => generateWith(c.table, c.xColumn, c.yColumn), 100);
   };
 
@@ -75,9 +80,14 @@ export default function AnalyticsPage() {
   const generateWith = async (table: string, xCol: string, yCol: string) => {
     setLoading(true);
     try {
+      const body: any = { table, xColumn: xCol, yColumn: yCol, limit: 200 };
+      if (useTwoTables && selTable2 && joinField) {
+        body.table2 = selTable2;
+        body.joinField = joinField;
+      }
       const r = await fetch(`${API}/api/analytics/data`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ table, xColumn: xCol, yColumn: yCol, limit: 200 }),
+        body: JSON.stringify(body),
       });
       const d = await r.json();
       setChartData(d.data || []);
@@ -103,6 +113,26 @@ export default function AnalyticsPage() {
           <select value={selX} onChange={e => setSelX(e.target.value)} style={sel}><option value="">Seleccionar columna...</option>{columns.map(c => <option key={c.key} value={c.key}>{c.label} ({c.type})</option>)}</select>
           <label style={{ ...lbl, marginTop: 10 }}>Eje Y</label>
           <select value={selY} onChange={e => setSelY(e.target.value)} style={sel}><option value="">Seleccionar columna...</option>{columns.map(c => <option key={c.key} value={c.key}>{c.label} ({c.type})</option>)}</select>
+
+          <label style={{ ...lbl, marginTop: 14, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="checkbox" checked={useTwoTables} onChange={e => setUseTwoTables(e.target.checked)} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+            <span>Usar dos tablas distintas</span>
+          </label>
+
+          {useTwoTables && (
+            <>
+              <label style={{ ...lbl, marginTop: 10 }}>Tabla para eje Y</label>
+              <select value={selTable2} onChange={e => setSelTable2(e.target.value)} style={sel}><option value="">Seleccionar...</option>{tables.filter(t => t.id !== selTable).map(t => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
+
+              <label style={{ ...lbl, marginTop: 10 }}>Campo de unión</label>
+              <select value={joinField} onChange={e => setJoinField(e.target.value)} style={sel}>
+                <option value="">Seleccionar campo...</option>
+                <option value="fk_patient_id">ID del Paciente (fk_patient_id)</option>
+                <option value="fk_treatment_id">ID del Tratamiento (fk_treatment_id)</option>
+              </select>
+            </>
+          )}
+
           <button onClick={generate} disabled={!selX || !selY || loading} style={{
             width: '100%', marginTop: 14, padding: '10px', borderRadius: 10, border: 'none',
             background: loading ? 'var(--br)' : 'var(--p)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
