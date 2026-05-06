@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { BarChart3, TrendingUp, PieChart, AreaChart, Target, ScatterChart, Search, X, FlaskConical, Activity, ChevronDown } from 'lucide-react';
+import { BarChart3, TrendingUp, PieChart, AreaChart, Target, ScatterChart, Search, X, FlaskConical, Activity, ChevronDown, Save, Trash2, Play } from 'lucide-react';
 
 const API = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? 'http://localhost:8080/v2'
@@ -11,6 +11,12 @@ const chartIcons: Record<string, any> = { BarChart3, TrendingUp, PieChart, AreaC
 interface Column { key: string; label: string; type: string; }
 interface Table { id: string; label: string; columns: Column[]; }
 interface ChartType { id: string; label: string; icon: string; }
+interface SavedChart { id: string; label: string; table: string; xColumn: string; yColumn: string; chartType: string; createdAt: string; }
+
+function loadSaved(): SavedChart[] {
+  try { return JSON.parse(localStorage.getItem('radix-saved-charts') || '[]'); } catch { return []; }
+}
+function saveCharts(charts: SavedChart[]) { localStorage.setItem('radix-saved-charts', JSON.stringify(charts)); }
 
 export default function AnalyticsPage() {
   const [tables, setTables] = useState<Table[]>([]);
@@ -23,6 +29,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState<any>(null);
   const [ChartComponents, setChartComponents] = useState<any>(null);
+  const [savedCharts, setSavedCharts] = useState<SavedChart[]>([]);
 
   useEffect(() => {
     fetch(`${API}/api/analytics/schema`).then(r => r.json()).then(d => {
@@ -30,22 +37,50 @@ export default function AnalyticsPage() {
       setChartTypes(d.chartTypes || []);
     });
     import('recharts').then(r => setChartComponents(r));
+    setSavedCharts(loadSaved());
   }, []);
+
+  const saveCurrent = () => {
+    if (!selTable || !selX || !selY || chartData.length === 0) return;
+    const label = prompt('Nombre para este gráfico:', `${tables.find(t=>t.id===selTable)?.label || selTable} — ${selChart}`);
+    if (!label) return;
+    const chart: SavedChart = { id: Date.now().toString(), label, table: selTable, xColumn: selX, yColumn: selY, chartType: selChart, createdAt: new Date().toISOString() };
+    const updated = [...savedCharts, chart];
+    setSavedCharts(updated);
+    saveCharts(updated);
+  };
+
+  const loadChart = (c: SavedChart) => {
+    setSelTable(c.table);
+    setSelX(c.xColumn);
+    setSelY(c.yColumn);
+    setSelChart(c.chartType);
+    setTimeout(() => generateWith(c.table, c.xColumn, c.yColumn), 100);
+  };
+
+  const deleteChart = (id: string) => {
+    const updated = savedCharts.filter(c => c.id !== id);
+    setSavedCharts(updated);
+    saveCharts(updated);
+  };
 
   const columns = tables.find(t => t.id === selTable)?.columns || [];
 
-  const generate = async () => {
-    if (!selTable || !selX || !selY) return;
+  const generateWith = async (table: string, xCol: string, yCol: string) => {
     setLoading(true);
     try {
       const r = await fetch(`${API}/api/analytics/data`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ table: selTable, xColumn: selX, yColumn: selY, limit: 200 }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table, xColumn: xCol, yColumn: yCol, limit: 200 }),
       });
       const d = await r.json();
       setChartData(d.data || []);
     } catch {} finally { setLoading(false); }
+  };
+
+  const generate = () => {
+    if (!selTable || !selX || !selY) return;
+    generateWith(selTable, selX, selY);
   };
 
   const handlePointClick = (point: any) => {
@@ -102,6 +137,28 @@ export default function AnalyticsPage() {
             })}
           </div>
         </div>
+
+        {savedCharts.length > 0 && (
+          <div style={{ padding: 16, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)' }}>
+            <h3 style={{ fontSize: 12, fontWeight: 800, color: 'var(--t-s)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Mis Gráficos ({savedCharts.length})</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 250, overflowY: 'auto' }}>
+              {savedCharts.map(c => {
+                const Icon = chartIcons[c.chartType] || BarChart3;
+                return (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--b)', border: '1px solid var(--br)' }}>
+                    <Icon size={14} style={{ color: 'var(--p)', flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--t)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</div>
+                      <div style={{ fontSize: 9, color: 'var(--t-s)' }}>{c.table} · {c.chartType}</div>
+                    </div>
+                    <button onClick={() => loadChart(c)} title="Cargar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--p)', padding: 4 }}><Play size={14} /></button>
+                    <button onClick={() => deleteChart(c.id)} title="Eliminar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-s)', padding: 4 }}><Trash2 size={14} /></button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* CHART AREA */}
@@ -160,6 +217,13 @@ export default function AnalyticsPage() {
           </ChartComponents.ResponsiveContainer>
         ) : null}
         {chartData.length > 0 && <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--t-s)', marginTop: 8 }}>{chartData.length} puntos. Haz clic en un punto para ver detalles.</div>}
+        {chartData.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+            <button onClick={saveCurrent} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, border: '1px solid var(--p)', background: 'var(--sf)', color: 'var(--p)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              <Save size={14} /> Guardar Gráfico
+            </button>
+          </div>
+        )}
       </div>
 
       {/* MODAL — Patient Detail */}

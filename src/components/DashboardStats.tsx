@@ -9,6 +9,7 @@ import {
   AlertsBarChartWidget, 
   PatientActivityRadarWidget 
 } from './widgets/DashboardWidgets';
+import { SavedChartsWidget } from './widgets/SavedChartsWidget';
 
 interface WidgetConfig {
   id: string;
@@ -25,6 +26,7 @@ export default function DashboardStats() {
     isotope: true,
     alerts: true,
     radar: true,
+    savedCharts: true,
   });
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -52,6 +54,7 @@ export default function DashboardStats() {
     { id: 'isotope', visible: widgets.isotope !== false, component: <IsotopeDistributionWidget />, title: 'Isotope Distribution' },
     { id: 'alerts', visible: widgets.alerts !== false, component: <AlertsBarChartWidget />, title: 'Alertas' },
     { id: 'radar', visible: widgets.radar !== false, component: <PatientActivityRadarWidget />, title: 'Patient Analytics' },
+    { id: 'savedCharts', visible: widgets.savedCharts !== false, component: <SavedChartsWidget />, title: 'Mis Gráficos' },
   ];
 
   if (!isLoaded) return null; // Avoid hydration mismatch
