@@ -1597,12 +1597,15 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
         }}
       >
         <div style={{
-          display: rixMsgs.length > 0 ? 'none' : 'grid',
+          display: 'grid',
           gridTemplateColumns: expanded && !isMobile ? '210px minmax(0, 1fr)' : '1fr',
           gap: expanded ? 18 : 16,
           alignItems: 'center',
-          marginBottom: isRixConversationOpen ? 10 : (expanded ? 18 : 22),
-          transition: 'margin 0.42s ease, opacity 0.42s ease',
+          marginBottom: isRixConversationOpen ? (rixMsgs.length > 0 ? 6 : 10) : (expanded ? 18 : 22),
+          opacity: rixMsgs.length > 0 ? 0 : 1,
+          maxHeight: rixMsgs.length > 0 ? '0px' : expanded ? '220px' : '180px',
+          overflow: 'hidden',
+          transition: 'opacity 0.45s ease, maxHeight 0.5s cubic-bezier(0.4, 0, 0.2, 1), marginBottom 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
         }}>
           <div style={{
             position: 'relative',
