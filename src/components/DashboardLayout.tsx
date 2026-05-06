@@ -283,7 +283,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
     tratamientos: { title: 'Tratamientos Activos', subtitle: 'Controla los planes de medicina nuclear en curso.' },
     alertas: { title: 'Centro de Alertas', subtitle: 'Avisos y notificaciones médicas urgentes.' },
     usuarios: { title: 'Usuarios del Sistema', subtitle: 'Administra los roles y accesos a la plataforma.' },
-    settings: { title: 'Configuración', subtitle: 'Ajusta tus preferencias visuales y de cuenta.' },
+    settings: { title: 'Configuración', subtitle: 'Administración del sistema' },
     rix: { title: 'Rix', subtitle: 'Asistente de IA de Radix.' },
     profile: { title: 'Mi perfil', subtitle: 'Gestiona tu identidad y la sesión activa.' },
   };
@@ -313,6 +313,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
           chatExpanded={isChatExpanded}
           isOpen={useOverlayPanels ? isMobileMenuOpen : isLeftSidebarOpen}
           isMobile={useOverlayPanels}
+          userRole={userRole}
           onChatClick={() => {
             openInternalChat();
             setIsMobileMenuOpen(false);
@@ -486,6 +487,7 @@ function LeftSidebar({
   isMobile,
   onChatClick,
   onCloseMobile,
+  userRole,
 }: {
   activeNav: string;
   activeRightTab: RightPanelTab;
@@ -494,7 +496,9 @@ function LeftSidebar({
   isMobile: boolean;
   onChatClick: () => void;
   onCloseMobile: () => void;
+  userRole: string;
 }) {
+  const isAdminRole = userRole === 'ADMIN' || userRole === 'Admin';
   const navItems = [
     { id: 'home', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { id: 'pacientes', label: 'Pacientes', icon: Users, href: '/pacientes' },
@@ -503,7 +507,7 @@ function LeftSidebar({
     { id: 'usuarios', label: 'Usuarios', icon: Shield, href: '/usuarios' },
     { id: 'chat', label: 'Chat interno', icon: MessageCircle, onClick: onChatClick },
     { id: 'rix', label: 'Rix', icon: Bot, href: '/rix' },
-    { id: 'settings', label: 'Configuración', icon: Settings, href: '/configuracion' },
+    ...(isAdminRole ? [{ id: 'settings', label: 'Configuración', icon: Settings, href: '/configuracion' }] : []),
   ];
 
   const sidebar = (
@@ -1031,8 +1035,8 @@ function InternalChatPanel({ isMobile }: { isMobile: boolean }) {
 
   useEffect(() => {
     let active = true;
-    users.getAll().then(data => {
-      if (!active) return;
+    fetch('/api/users').then(r => r.json()).then(data => {
+      if (!active || !Array.isArray(data)) return;
       const dir = data.map((u: any) => ({
         id: u.id,
         name: `${u.firstName} ${u.lastName}`.trim() || u.email,
@@ -1212,9 +1216,9 @@ const pBtnStyle: React.CSSProperties = {
 };
 
 function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean }) {
-  const [previousRixChats, setPreviousRixChats] = useState<RixConversation[]>([]);
-  const [rixGroups, setRixGroups] = useState<RixGroup[]>([]);
-  const [doctors, setDoctors] = useState<RixDoctor[]>([]);
+  const [chats, setChats] = useState<any[]>([]);
+  const [rixGroups, setRixGroups] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
   const [activeRixChat, setActiveRixChat] = useState<string | number>('');
   const [showGroupComposer, setShowGroupComposer] = useState(false);
   const [isRixConversationOpen, setIsRixConversationOpen] = useState(false);
@@ -1224,31 +1228,25 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [rixPrompt, setRixPrompt] = useState('');
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
   const { sendQuery } = useWebSocketRix();
-  const activeChat = previousRixChats.find(chat => chat.id === activeRixChat);
+  const activeChat = chats.find(chat => chat.id === activeRixChat);
   const selectedDoctorSummary = selectedDoctors.length
     ? doctors.filter((doctor) => selectedDoctors.includes(doctor.id)).map((doctor) => doctor.name).join(', ')
     : 'Sin invitados seleccionados';
 
   useEffect(() => {
     let active = true;
-    const loadRixData = async () => {
-      const apiUsers = await users.getAll().catch(() => []);
+    fetch('/api/users').then(r => r.json()).then(apiUsers => {
+      if (!active || !Array.isArray(apiUsers)) return;
       const doctorList = apiUsers
-        .filter((user) => ['admin', 'facultativo', 'doctor', 'Doctor'].includes(user.role))
-        .map((user) => ({
-          id: user.id,
-          name: `${user.firstName} ${user.lastName}`.trim() || user.email,
-          specialty: user.specialty || user.role,
+        .filter((u: any) => ['admin', 'facultativo', 'doctor', 'Doctor'].includes(u.role))
+        .map((u: any) => ({
+          id: u.id,
+          name: `${u.firstName} ${u.lastName}`.trim() || u.email,
+          specialty: u.specialty || u.role,
         }));
-      const conversations = previousRixChats;
-      const groups = [];
-      if (!active) return;
-      setPreviousRixChats(conversations);
-      setRixGroups(groups);
       setDoctors(doctorList);
-      setActiveRixChat((current) => current || conversations[0]?.id || '');
-    };
-    loadRixData();
+      setActiveRixChat((current: any) => current || doctorList[0]?.id || '');
+    }).catch(() => {});
     return () => { active = false; };
   }, []);
 
@@ -1442,7 +1440,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                 <Clock size={16} color="var(--t-s, #6b7280)" />
               </div>
 	              <div style={{ display: 'grid', gap: 8 }}>
-	                {previousRixChats.map(chat => {
+	                {chats.map(chat => {
                   const selected = chat.id === activeRixChat;
                   return (
                     <button
@@ -1468,7 +1466,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                     </button>
                   );
 	                })}
-	                {previousRixChats.length === 0 && <EmptyInline text="No hay chats con Rix devueltos por el servidor." />}
+	                {chats.length === 0 && <EmptyInline text="No hay chats con Rix devueltos por el servidor." />}
 	              </div>
 	              {activeChat && <div style={{
                 marginTop: 12,
@@ -2054,7 +2052,6 @@ function ProfilePage({ userName, userRole, userId, userEmail }: { userName: stri
 
         <ProfileCard icon={Shield} title="Perfil clínico" subtitle="Datos profesionales visibles para administración y coordinación.">
           <ProfileInput label="Rol" value={profile?.role || userRole} onChange={(value) => setProfile(prev => prev ? { ...prev, role: value } : prev)} disabled />
-          <ProfileInput label="Número de colegiado" value={form.licenseNumber} onChange={(value) => setForm({ ...form, licenseNumber: value })} />
           <ProfileInput label="Especialidad" value={form.specialty} onChange={(value) => setForm({ ...form, specialty: value })} />
           <div style={{ padding: 12, borderRadius: 14, background: 'var(--b, #f8fafc)', color: 'var(--t-s, #6b7280)', fontSize: 12, lineHeight: 1.45 }}>
             La pertenencia a departamentos y pacientes asignados se gestiona desde Usuarios.

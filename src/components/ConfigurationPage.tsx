@@ -222,15 +222,7 @@ export default function ConfigurationPage() {
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gap: 22, minWidth: 0 }}>
-      <div className="settings-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--t, #111827)', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.03em', margin: 0 }}>
-            Centro de configuración
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--t-s, #6b7280)', margin: '7px 0 0', fontFamily: "'Inter', sans-serif", lineHeight: 1.45 }}>
-            Ajusta apariencia, correo, Rix, seguridad, clínica e integraciones desde una sola superficie.
-          </p>
-        </div>
+      <div className="settings-header" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' }}>
         <div className="settings-actions" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {savedAt && <span style={{ fontSize: 12, color: 'var(--t-s, #6b7280)', fontWeight: 700 }}>{savedAt}</span>}
           {isCustom && (
