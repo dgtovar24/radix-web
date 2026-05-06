@@ -354,6 +354,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
           isOpen={useOverlayPanels ? isMobileMenuOpen : isLeftSidebarOpen}
           isMobile={useOverlayPanels}
           userRole={userRole}
+          userName={userName}
           onChatClick={() => {
             openInternalChat();
             setIsMobileMenuOpen(false);
@@ -537,6 +538,7 @@ function LeftSidebar({
   onChatClick: () => void;
   onCloseMobile: () => void;
   userRole: string;
+  userName: string;
 }) {
   const isAdminRole = true; // Todos los usuarios autenticados ven Configuración
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
