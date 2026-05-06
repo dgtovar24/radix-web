@@ -82,10 +82,10 @@ export default function ConfigurationPage() {
   });
 
   const [ai, setAi] = useState({
-    provider: 'minimax',
-    model: 'MiniMax-M2.7',
+    provider: 'deepseek',
+    model: 'deepseek-v4-pro',
     apiKey: '',
-    baseUrl: 'https://api.minimax.io/v1',
+    baseUrl: 'https://api.deepseek.io/v1',
     temperature: '0.7',
     maxTokens: '1024',
     isActive: true,
@@ -97,10 +97,10 @@ export default function ConfigurationPage() {
     fetch('/api/config/ai').then(r => r.json()).then(data => {
       if (data.configured) {
         setAi({
-          provider: data.provider || 'minimax',
-          model: data.model || 'MiniMax-M2.7',
+          provider: data.provider || 'deepseek',
+          model: data.model || 'deepseek-v4-pro',
           apiKey: data.apiKey || '',
-          baseUrl: data.baseUrl || 'https://api.minimax.io/v1',
+          baseUrl: data.baseUrl || 'https://api.deepseek.io/v1',
           temperature: String(data.temperature ?? 0.7),
           maxTokens: String(data.maxTokens ?? 1024),
           isActive: data.isActive ?? true,
@@ -406,13 +406,13 @@ export default function ConfigurationPage() {
               <div style={{ display: 'grid', gap: 12 }}>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <SelectField label="Proveedor" value={ai.provider} onChange={(value) => setAi({ ...ai, provider: value })} options={['minimax', 'openai', 'anthropic', 'custom']} />
-                  <TextField label="Modelo" value={ai.model} onChange={(value) => setAi({ ...ai, model: value })} placeholder="MiniMax-M2.7" />
+                  <SelectField label="Proveedor" value={ai.provider} onChange={(value) => setAi({ ...ai, provider: value })} options={['deepseek', 'openai', 'anthropic', 'custom']} />
+                  <TextField label="Modelo" value={ai.model} onChange={(value) => setAi({ ...ai, model: value })} placeholder="deepseek-v4-pro" />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <TextField label="API Key" value={ai.apiKey} onChange={(value) => setAi({ ...ai, apiKey: value })} placeholder="sk-cp-..." type="password" />
-                  <TextField label="Base URL" value={ai.baseUrl} onChange={(value) => setAi({ ...ai, baseUrl: value })} placeholder="https://api.minimax.io/v1" />
+                  <TextField label="Base URL" value={ai.baseUrl} onChange={(value) => setAi({ ...ai, baseUrl: value })} placeholder="https://api.deepseek.io/v1" />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>

@@ -1431,6 +1431,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [rixPrompt, setRixPrompt] = useState('');
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
   const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; thinking?: string; time: string}>>([]);
+  const [thinkingMode, setThinkingMode] = useState(true);
   const [thinking, setThinking] = useState(false);
   const [attachments, setAttachments] = useState<Array<{name: string; url: string; type: string; text?: string}>>([]);
   const { sendQuery, responses: wsResponses, connected: rixConnected } = useWebSocketRix();
@@ -1548,7 +1549,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
       fetch(`${API_URL}/api/config/ai/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: text, systemContext: ctx || undefined, thinking: true }),
+        body: JSON.stringify({ query: fullText, systemContext: ctx || undefined, thinking: thinkingMode }),
       }).then(async (res) => {
         const reader = res.body?.getReader();
         if (!reader) { setThinking(false); return; }
@@ -2023,7 +2024,19 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               overflow: 'hidden',
             }}
           />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 12 }}>
+            <button type="button" onClick={() => setThinkingMode(!thinkingMode)}
+              title={thinkingMode ? 'Razonamiento activado' : 'Razonamiento desactivado'} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 12px', borderRadius: 10, border: thinkingMode ? '1px solid var(--p, #6d32e8)' : '1px solid var(--br, #e5e7eb)',
+                background: thinkingMode ? 'color-mix(in srgb, var(--p, #6d32e8) 10%, #ffffff)' : 'var(--b, #f8fafc)',
+                color: thinkingMode ? 'var(--p, #6d32e8)' : 'var(--t-s, #6b7280)',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              }}>
+              <Sparkles size={13} />
+              Razonar
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button type="button" onClick={() => fileRef.current?.click()} title="Adjuntar archivo" style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 36, height: 36, borderRadius: 12, border: '1px solid var(--br)',
@@ -2039,6 +2052,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
             }}>
               <Send size={17} />
             </button>
+            </div>
           </div>
           {rixSubmitStatus && <div style={{ marginTop: 10 }}><EmptyInline text={rixSubmitStatus} /></div>}
 	        </div>
