@@ -1489,16 +1489,20 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     setRixMsgs(prev => [...prev, { role: 'user', text, time: new Date().toISOString() }]);
     setRixPrompt('');
     setRixSubmitStatus('');
-    setThinking(true); // Show thinking indicator
+    setThinking(true);
+
+    // Build system context with thinking instruction
+    const ctx = (selectedDoctors.length > 0
+      ? `Contexto clínico — médicos presentes: ${selectedDoctorSummary}. `
+      : '')
+      + (thinkingMode
+        ? 'Puedes usar <think>...</think> para razonar antes de responder.'
+        : 'IMPORTANTE: NO uses etiquetas <think>. Responde directamente sin razonamiento interno.');
 
     // Try WebSocket first
     const sent = sendQuery(text);
     if (!sent) {
-      // Fallback: call directly via HTTP to API
       const API_URL = 'https://api.raddix.pro/v1';
-      const ctx = selectedDoctors.length > 0
-        ? `Contexto clínico — médicos presentes: ${selectedDoctorSummary}. `
-        : '';
       fetch(`${API_URL}/api/config/ai/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1960,7 +1964,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               fontSize: 12, fontWeight: 700, cursor: 'pointer',
             }}>
               <Sparkles size={15} />
-              {thinkingMode ? 'Pensando...' : 'Pensar mejor'}
+              {thinkingMode ? 'Razonando...' : 'Razonar'}
             </button>
             <button type="button" aria-label="Enviar mensaje a Rix" onClick={sendRixMessage} style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
