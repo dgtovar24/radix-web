@@ -1895,7 +1895,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
           {isRixConversationOpen && (
             <div ref={msgsRef} style={{
               display: 'flex', flexDirection: 'column', gap: 10,
-              marginBottom: 12, maxHeight: isMobile ? 240 : 280, overflowY: 'auto',
+              marginBottom: 12, maxHeight: isMobile ? '70vh' : '80vh', minHeight: isRixConversationOpen ? (isMobile ? 180 : 200) : 'auto', overflowY: 'auto',
               animation: 'rixPanelReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1)',
             }}>
               {rixMsgs.length === 0 && !thinking && (
