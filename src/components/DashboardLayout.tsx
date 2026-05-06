@@ -1389,7 +1389,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
   const [thinkingMode, setThinkingMode] = useState(false);
   const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; time: string}>>([]);
-  const { sendQuery } = useWebSocketRix();
+  const { sendQuery, responses: wsResponses, connected: rixConnected } = useWebSocketRix();
   const taRef = useRef<HTMLTextAreaElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
 
@@ -1787,25 +1787,33 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               marginBottom: 12, maxHeight: isMobile ? 240 : 280, overflowY: 'auto',
               animation: 'rixPanelReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1)',
             }}>
-              {rixMsgs.length === 0 && (
+              {rixMsgs.length === 0 && wsResponses.length === 0 && (
                 <EmptyInline text="Escribe tu consulta clínica y Rix te responderá con MiniMax M2.7." />
               )}
               {rixMsgs.map((m, i) => (
-                <div key={i} style={{
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                <div key={`u${i}`} style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
                 }}>
                   <div style={{
-                    maxWidth: '85%',
-                    padding: '10px 14px',
-                    borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    background: m.role === 'user' ? 'var(--p, #6d32e8)' : 'var(--b, #f3f4f6)',
-                    color: m.role === 'user' ? '#ffffff' : 'var(--t, #111827)',
+                    maxWidth: '85%', padding: '10px 14px',
+                    borderRadius: '16px 16px 4px 16px',
+                    background: 'var(--p, #6d32e8)', color: '#ffffff',
                     fontSize: 13, lineHeight: 1.5,
                     whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  }}>
-                    {m.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()}
-                  </div>
+                  }}>{m.text}</div>
+                </div>
+              ))}
+              {wsResponses.map((r: any, i: number) => (
+                <div key={`a${i}`} style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                }}>
+                  <div style={{
+                    maxWidth: '85%', padding: '10px 14px',
+                    borderRadius: '16px 16px 16px 4px',
+                    background: 'var(--b, #f3f4f6)', color: 'var(--t, #111827)',
+                    fontSize: 13, lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  }}>{r.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()}</div>
                 </div>
               ))}
             </div>
