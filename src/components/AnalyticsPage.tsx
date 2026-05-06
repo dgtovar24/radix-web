@@ -70,10 +70,10 @@ export default function AnalyticsPage() {
           </select>
 
           <label style={{ ...lbl, marginTop: 10 }}>Eje X</label>
-          <select value={selX} onChange={setSelX} style={sel}><option value="">Seleccionar columna...</option>{columns.map(c => <option key={c.key} value={c.key}>{c.label} ({c.type})</option>)}</select>
+          <select value={selX} onChange={e => setSelX(e.target.value)} style={sel}><option value="">Seleccionar columna...</option>{columns.map(c => <option key={c.key} value={c.key}>{c.label} ({c.type})</option>)}</select>
 
           <label style={{ ...lbl, marginTop: 10 }}>Eje Y</label>
-          <select value={selY} onChange={setSelY} style={sel}><option value="">Seleccionar columna...</option>{columns.map(c => <option key={c.key} value={c.key}>{c.label} ({c.type})</option>)}</select>
+          <select value={selY} onChange={e => setSelY(e.target.value)} style={sel}><option value="">Seleccionar columna...</option>{columns.map(c => <option key={c.key} value={c.key}>{c.label} ({c.type})</option>)}</select>
 
           <button onClick={generate} disabled={!selX || !selY || loading} style={{
             width: '100%', marginTop: 14, padding: '10px', borderRadius: 10, border: 'none',
