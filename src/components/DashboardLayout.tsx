@@ -16,6 +16,7 @@ import { ModulesProvider } from '../context/ModulesContext';
 import {
   Activity,
   ArrowUpRight,
+  BarChart3,
   Bell,
   Bot,
   Calendar,
@@ -52,7 +53,7 @@ interface DashboardLayoutProps {
   userId?: number;
   userEmail?: string;
   initialRightSidebarOpen?: boolean;
-  configPage?: 'configuration' | 'patients' | 'treatments' | 'devices' | 'rix' | 'profile';
+  configPage?: 'configuration' | 'patients' | 'treatments' | 'devices' | 'rix' | 'profile' | 'analytics';
 }
 
 type RightPanelTab = 'chat' | 'rix';
@@ -118,9 +119,11 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
       if (path.includes('usuarios')) return 'usuarios';
       if (path.includes('configuracion')) return 'settings';
       if (path.includes('rix')) return 'rix';
+      if (path.includes('analisis')) return 'analytics';
     }
     if (configPage === 'configuration') return 'settings';
     if (configPage === 'rix') return 'rix';
+    if (configPage === 'analytics') return 'analytics';
     if (configPage === 'profile') return 'profile';
     return 'home';
   };
@@ -128,6 +131,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
   const [activeNav, setActiveNav] = useState(() => {
     if (configPage === 'configuration') return 'settings';
     if (configPage === 'rix') return 'rix';
+    if (configPage === 'analytics') return 'analytics';
     if (configPage === 'profile') return 'profile';
     return 'home';
   });
@@ -318,6 +322,7 @@ function DashboardLayoutInner({ children, userName, userRole, userId, userEmail,
     usuarios: { title: 'Usuarios del Sistema', subtitle: 'Administra los roles y accesos a la plataforma.' },
     settings: { title: 'Configuración', subtitle: 'Administración del sistema' },
     rix: { title: 'Rix', subtitle: 'Asistente de IA de Radix.' },
+    analytics: { title: 'Análisis', subtitle: 'Explora datos, genera gráficos personalizados y analiza métricas clínicas.' },
     profile: { title: 'Mi perfil', subtitle: 'Gestiona tu identidad y la sesión activa.' },
   };
 

@@ -237,6 +237,19 @@ export const files = {
   },
 };
 
+// AI Configuration
+export const aiConfig = {
+  get: () => fetchJson<AIConfigResponse>('/config/ai'),
+  update: (data: Record<string, any>) => fetchJson<{ message: string; model: string }>('/config/ai', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json' },
+  }),
+  test: () => fetchJson<{ success: boolean; message: string }>('/config/ai/test', {
+    method: 'POST',
+  }),
+};
+
 // Types
 export interface User {
   id: number; firstName: string; lastName: string; email: string; role: string;
@@ -324,9 +337,22 @@ export interface Isotope {
   biologicalHalfLife?: number;
 }
 
+export interface AIConfigResponse {
+  configured: boolean; provider: string; model: string; apiKey: string;
+  baseUrl: string; temperature: number; maxTokens: number; isActive: boolean;
+}
+
 export interface DashboardStats {
   totalPatients: number; totalDoctors: number; activeTreatments: number;
   pendingAlerts: number; totalSmartwatches: number; activeIsotopes: number;
 }
+
+// Analytics
+export const analytics = {
+  getSchema: (role = 'Doctor') => fetchJson<{ tables: any[]; chartTypes: any[] }>(`/analytics/schema?role=${role}`),
+  getData: (query: { table: string; xColumn: string; yColumn: string; filter?: Record<string, any>; limit?: number }) =>
+    fetchJson<{ data: any[]; total: number }>('/analytics/data', { method: 'POST', body: JSON.stringify(query), headers: { 'Content-Type': 'application/json' } }),
+  getPatientFull: (id: number) => fetchJson<any>(`/analytics/patient/${id}/full`),
+};
 
 export { fetchJson };

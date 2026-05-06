@@ -82,17 +82,32 @@ export default function ConfigurationPage() {
   });
 
   const [ai, setAi] = useState({
-    provider: 'OpenAI',
-    model: 'gpt-4.1-mini',
-    fallbackModel: 'gpt-4o-mini',
-    temperature: '0.2',
-    maxTokens: '1200',
-    clinicalGuardrails: true,
-    citeSources: true,
-    allowPatientContext: true,
-    retentionDays: '30',
-    systemPrompt: 'Rix es el asistente clínico de Radix. Responde en español, prioriza seguridad del paciente y pide confirmación cuando falten datos clínicos.',
+    provider: 'minimax',
+    model: 'minimax-m2.5',
+    apiKey: '',
+    baseUrl: 'https://api.minimax.chat/v1',
+    temperature: '0.7',
+    maxTokens: '1024',
+    isActive: true,
   });
+
+  const [aiStatus, setAiStatus] = useState('');
+
+  useEffect(() => {
+    fetch('/api/config/ai').then(r => r.json()).then(data => {
+      if (data.configured) {
+        setAi({
+          provider: data.provider || 'minimax',
+          model: data.model || 'minimax-m2.5',
+          apiKey: data.apiKey || '',
+          baseUrl: data.baseUrl || 'https://api.minimax.chat/v1',
+          temperature: String(data.temperature ?? 0.7),
+          maxTokens: String(data.maxTokens ?? 1024),
+          isActive: data.isActive ?? true,
+        });
+      }
+    }).catch(() => {});
+  }, []);
 
   const [security, setSecurity] = useState({
     sessionMinutes: '480',
@@ -387,35 +402,57 @@ export default function ConfigurationPage() {
           )}
 
           {activeTab === 'ai' && (
-            <SectionCard icon={Bot} title="Chatbot Rix" subtitle="Define el proveedor, modelo, límites y comportamiento clínico del asistente.">
-              <div style={twoColumnGridStyle}>
-                <SelectField label="Proveedor" value={ai.provider} onChange={(value) => setAi({ ...ai, provider: value })} options={['OpenAI', 'Azure OpenAI', 'Servidor local', 'Anthropic']} />
-                <SelectField label="Modelo principal" value={ai.model} onChange={(value) => setAi({ ...ai, model: value })} options={aiModels.map(model => model.id)} />
-                <SelectField label="Modelo de respaldo" value={ai.fallbackModel} onChange={(value) => setAi({ ...ai, fallbackModel: value })} options={aiModels.map(model => model.id)} />
-                <TextField label="Temperatura" value={ai.temperature} onChange={(value) => setAi({ ...ai, temperature: value })} />
-                <TextField label="Máximo de tokens" value={ai.maxTokens} onChange={(value) => setAi({ ...ai, maxTokens: value })} />
-                <TextField label="Retención de conversaciones (días)" value={ai.retentionDays} onChange={(value) => setAi({ ...ai, retentionDays: value })} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
-                {aiModels.map(model => (
-                  <button key={model.id} type="button" onClick={() => setAi({ ...ai, model: model.id })} style={{
-                    ...modelCardStyle,
-                    borderColor: ai.model === model.id ? 'var(--p, #7c3aed)' : 'var(--br, #e5e7eb)',
-                    background: ai.model === model.id ? 'color-mix(in srgb, var(--p, #7c3aed) 8%, #ffffff)' : 'var(--b, #ffffff)',
-                  }}>
-                    <div style={smallTitleStyle}>{model.name}</div>
-                    <p style={{ margin: '6px 0 0', fontSize: 12, lineHeight: 1.45, color: 'var(--t-s, #6b7280)' }}>{model.detail}</p>
-                  </button>
-                ))}
-              </div>
-              <div style={{ display: 'grid', gap: 10 }}>
-                <ToggleField label="Usar contexto de pacientes autorizado" checked={ai.allowPatientContext} onChange={(value) => setAi({ ...ai, allowPatientContext: value })} />
-                <ToggleField label="Activar guardrails clínicos" checked={ai.clinicalGuardrails} onChange={(value) => setAi({ ...ai, clinicalGuardrails: value })} />
-                <ToggleField label="Pedir citas/fuentes cuando aplique" checked={ai.citeSources} onChange={(value) => setAi({ ...ai, citeSources: value })} />
-                <div>
-                  <label style={labelStyle}>Prompt del sistema</label>
-                  <textarea value={ai.systemPrompt} onChange={(event) => setAi({ ...ai, systemPrompt: event.target.value })} style={{ ...inputStyle, minHeight: 120, resize: 'vertical', lineHeight: 1.5 }} />
+            <SectionCard icon={Bot} title="Chatbot Rix" subtitle="Configura el modelo de IA, la API Key y los parámetros del asistente clínico.">
+              <div style={{ display: 'grid', gap: 12 }}>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <SelectField label="Proveedor" value={ai.provider} onChange={(value) => setAi({ ...ai, provider: value })} options={['minimax', 'openai', 'anthropic', 'custom']} />
+                  <TextField label="Modelo" value={ai.model} onChange={(value) => setAi({ ...ai, model: value })} placeholder="minimax-m2.5" />
                 </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <TextField label="API Key" value={ai.apiKey} onChange={(value) => setAi({ ...ai, apiKey: value })} placeholder="sk-cp-..." type="password" />
+                  <TextField label="Base URL" value={ai.baseUrl} onChange={(value) => setAi({ ...ai, baseUrl: value })} placeholder="https://api.minimax.chat/v1" />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  <TextField label="Temperatura" value={ai.temperature} onChange={(value) => setAi({ ...ai, temperature: value })} placeholder="0.7" />
+                  <TextField label="Max Tokens" value={ai.maxTokens} onChange={(value) => setAi({ ...ai, maxTokens: value })} placeholder="1024" />
+                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <ToggleField label="Activo" checked={ai.isActive} onChange={(value) => setAi({ ...ai, isActive: value })} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                  <button type="button" onClick={async () => {
+                    setAiStatus('Probando...');
+                    try {
+                      const res = await (await fetch('/api/config/ai/test', { method: 'POST' })).json();
+                      setAiStatus(res.success ? '✓ ' + res.message : '✗ ' + res.message);
+                    } catch { setAiStatus('✗ Error de conexión'); }
+                  }} style={{
+                    padding: '10px 20px', borderRadius: 10, border: '1px solid var(--br)',
+                    background: 'var(--sf)', color: 'var(--t)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}>Probar conexión</button>
+
+                  <button type="button" onClick={async () => {
+                    setAiStatus('Guardando...');
+                    try {
+                      const res = await (await fetch('/api/config/ai', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(ai),
+                      })).json();
+                      setAiStatus('✓ ' + (res.message || 'Guardado correctamente'));
+                    } catch { setAiStatus('✗ Error al guardar'); }
+                  }} style={{
+                    padding: '10px 20px', borderRadius: 10, border: 'none',
+                    background: 'var(--p)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  }}>Guardar configuración</button>
+
+                  {aiStatus && <span style={{ alignSelf: 'center', fontSize: 12, fontWeight: 600, color: aiStatus.startsWith('✓') ? '#10b981' : aiStatus.startsWith('✗') ? '#ef4444' : 'var(--t-s)' }}>{aiStatus}</span>}
+                </div>
+
               </div>
             </SectionCard>
           )}
