@@ -1377,6 +1377,19 @@ function EmptyInline({ text }: { text: string }) {
   );
 }
 
+function renderMarkdown(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^### (.+)$/gm, '<h4 style="margin:8px 0 4px;font-size:14px;font-weight:700;color:var(--t)">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="margin:10px 0 6px;font-size:15px;font-weight:700;color:var(--t)">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2 style="margin:12px 0 6px;font-size:16px;font-weight:800;color:var(--t)">$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:700;color:var(--t)">$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\n- (.+)/g, '\n<span style="display:flex;gap:6px">• $1</span>')
+    .replace(/\n/g, '<br/>');
+}
+
 function ThinkingBubble({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   if (!text) return null;
@@ -1486,14 +1499,45 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
       const ctx = selectedDoctors.length > 0
         ? `Contexto clínico — médicos presentes: ${selectedDoctorSummary}. `
         : '';
-      fetch(`${API_URL}/api/config/ai/query`, {
+      fetch(`${API_URL}/api/config/ai/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text, systemContext: ctx || undefined, thinking: thinkingMode }),
-      }).then(r => r.json()).then(data => {
-        const raw = data.response || data.error || 'Sin respuesta';
-        const { thinking: th, response } = parseResponse(raw);
-        setRixMsgs(prev => [...prev, { role: 'assistant', text: response, thinking: th || undefined, time: new Date().toISOString() }]);
+      }).then(async (res) => {
+        const reader = res.body?.getReader();
+        if (!reader) { setThinking(false); return; }
+        const decoder = new TextDecoder();
+        let fullText = '';
+        setRixMsgs(prev => [...prev, { role: 'assistant', text: '', time: new Date().toISOString() }]);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') break;
+              try {
+                const json = JSON.parse(data);
+                if (json.error) { fullText = json.error; break; }
+                if (json.content) {
+                  fullText += json.content;
+                  setRixMsgs(prev => {
+                    const copy = [...prev];
+                    const last = copy[copy.length - 1];
+                    if (last?.role === 'assistant') {
+                      const { thinking: th, response } = parseResponse(fullText);
+                      copy[copy.length - 1] = { ...last, text: response, thinking: th || undefined };
+                    }
+                    return copy;
+                  });
+                }
+              } catch {}
+            }
+          }
+        }
         setThinking(false);
       }).catch(() => {
         setRixSubmitStatus('No se pudo contactar con Rix. Intenta de nuevo.');
@@ -1870,9 +1914,11 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                     borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                     background: isUser ? 'var(--p, #6d32e8)' : 'var(--b, #f3f4f6)',
                     color: isUser ? '#ffffff' : 'var(--t, #111827)',
-                    fontSize: 13, lineHeight: 1.5,
+                    fontSize: 13, lineHeight: 1.55,
                     whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  }}>{m.text}</div>
+                  }} dangerouslySetInnerHTML={isUser ? undefined : { __html: renderMarkdown(m.text) }}>
+                    {isUser ? m.text : null}
+                  </div>
                 </div>
                 );
               })}
