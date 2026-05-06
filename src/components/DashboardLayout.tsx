@@ -1709,25 +1709,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                 </button>
               </div>
 
-	              {rixGroups.map((group) => (
-	                <button key={group.id} type="button" style={{
-	                  width: '100%',
-	                  textAlign: 'left',
-	                  padding: 12,
-	                  borderRadius: 14,
-	                  border: '1px solid var(--br, #e5e7eb)',
-	                  background: 'var(--sf, #ffffff)',
-	                  cursor: 'pointer',
-	                  fontFamily: "'Inter', sans-serif",
-	                }}>
-	                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-	                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--t, #111827)' }}>{group.title}</span>
-	                    <span style={{ fontSize: 11, color: 'var(--p, #6d32e8)', fontWeight: 800 }}>{group.meta || `${group.participantCount || 0} médicos`}</span>
-	                  </div>
-	                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--t-s, #6b7280)' }}>{group.excerpt || 'Sesión grupal sin resumen disponible.'}</div>
-	                </button>
-	              ))}
-	              {rixGroups.length === 0 && <EmptyInline text="No hay chats grupales de Rix devueltos por el servidor." />}
+              <EmptyInline text="Los chats grupales se sincronizan vía WebSocket." />
 
               {showGroupComposer && (
                 <div style={{
