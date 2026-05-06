@@ -1430,7 +1430,6 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [selectedDoctors, setSelectedDoctors] = useState<Array<string | number>>([]);
   const [rixPrompt, setRixPrompt] = useState('');
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
-  const [thinkingMode, setThinkingMode] = useState(false);
   const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; thinking?: string; time: string}>>([]);
   const [thinking, setThinking] = useState(false);
   const { sendQuery, responses: wsResponses, connected: rixConnected } = useWebSocketRix();
@@ -1500,7 +1499,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
       fetch(`${API_URL}/api/config/ai/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: text, systemContext: ctx || undefined, thinking: thinkingMode }),
+        body: JSON.stringify({ query: text, systemContext: ctx || undefined, thinking: true }),
       }).then(async (res) => {
         const reader = res.body?.getReader();
         if (!reader) { setThinking(false); return; }
@@ -1901,7 +1900,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                   display: 'flex', flexDirection: 'column',
                   alignItems: isUser ? 'flex-end' : 'flex-start',
                 }}>
-                  {thinkingMode && m.thinking && <ThinkingBubble text={m.thinking} />}
+                  {m.thinking && <ThinkingBubble text={m.thinking} />}
                   <div style={{
                     maxWidth: '85%', padding: '10px 14px',
                     borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
@@ -1960,17 +1959,6 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
             }}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 }}>
-            <button type="button" onClick={() => setThinkingMode(!thinkingMode)} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '9px 12px', borderRadius: 12,
-              border: thinkingMode ? '1px solid var(--p, #6d32e8)' : '1px solid var(--br, #e5e7eb)',
-              background: thinkingMode ? 'color-mix(in srgb, var(--p, #6d32e8) 10%, #ffffff)' : 'var(--b, #f8fafc)',
-              color: thinkingMode ? 'var(--p, #6d32e8)' : 'var(--t, #111827)',
-              fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            }}>
-              <Sparkles size={15} />
-              {thinkingMode ? 'Razonando...' : 'Razonar'}
-            </button>
             <button type="button" aria-label="Enviar mensaje a Rix" onClick={sendRixMessage} style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 40, height: 40, borderRadius: 14, border: 'none',
