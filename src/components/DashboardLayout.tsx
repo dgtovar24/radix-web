@@ -1437,11 +1437,12 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const taRef = useRef<HTMLTextAreaElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
 
-  // Parse thinking tags from response
+  // Parse thinking tags from response — only keep thinking if mode is enabled
   const parseResponse = (text: string) => {
+    const response = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    if (!thinkingMode) return { thinking: '', response };
     const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
     const thinking = thinkMatch ? thinkMatch[1].trim() : '';
-    const response = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
     return { thinking, response };
   };
 
@@ -1896,7 +1897,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                   display: 'flex', flexDirection: 'column',
                   alignItems: isUser ? 'flex-end' : 'flex-start',
                 }}>
-                  {m.thinking && <ThinkingBubble text={m.thinking} />}
+                  {thinkingMode && m.thinking && <ThinkingBubble text={m.thinking} />}
                   <div style={{
                     maxWidth: '85%', padding: '10px 14px',
                     borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
