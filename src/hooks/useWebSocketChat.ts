@@ -29,7 +29,7 @@ export function useWebSocketChat() {
       ? 'localhost:8080'
       : 'api.raddix.pro';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${wsHost}/ws/chat`);
+    const ws = new WebSocket(`${protocol}//${wsHost}/v1/ws/chat`);
 
     ws.onopen = () => {
       setConnected(true);
@@ -92,7 +92,7 @@ export function useWebSocketRix() {
       ? 'localhost:8080'
       : 'api.raddix.pro';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${wsHost}/ws/rix`);
+    const ws = new WebSocket(`${protocol}//${wsHost}/v1/ws/rix`);
 
     ws.onopen = () => setConnected(true);
 

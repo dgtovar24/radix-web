@@ -1441,11 +1441,12 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     // Try WebSocket first
     const sent = sendQuery(text);
     if (!sent) {
-      // Fallback: call directly via HTTP
+      // Fallback: call directly via HTTP to API
+      const API_URL = 'https://api.raddix.pro/v1';
       const ctx = selectedDoctors.length > 0
         ? `Contexto clínico — médicos presentes: ${selectedDoctorSummary}. `
         : '';
-      fetch('/api/config/ai/query', {
+      fetch(`${API_URL}/api/config/ai/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text, systemContext: ctx || undefined, thinking: thinkingMode }),

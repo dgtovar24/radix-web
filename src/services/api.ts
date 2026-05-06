@@ -174,7 +174,7 @@ export const chat = {
     const wsHost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
       ? 'localhost:8080' : 'api.raddix.pro';
     const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return { chat: `${protocol}//${wsHost}/ws/chat`, rix: `${protocol}//${wsHost}/ws/rix` };
+    return { chat: `${protocol}//${wsHost}/v1/ws/chat`, rix: `${protocol}//${wsHost}/v1/ws/rix` };
   },
 };
 

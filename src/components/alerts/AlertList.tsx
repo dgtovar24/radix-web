@@ -46,7 +46,7 @@ export default function AlertList({ filterPending = false, patientId }: AlertLis
   useEffect(() => {
     const wsHost = window.location.hostname === 'localhost' ? 'localhost:8080' : 'api.raddix.pro';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${wsHost}/ws/alerts`;
+    const wsUrl = `${protocol}//${wsHost}/v1/ws/alerts`;
 
     let ws: WebSocket | null = null;
     let reconnectTimeout: NodeJS.Timeout;
