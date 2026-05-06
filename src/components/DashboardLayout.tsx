@@ -1605,7 +1605,8 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
           opacity: rixMsgs.length > 0 ? 0 : 1,
           maxHeight: rixMsgs.length > 0 ? '0px' : expanded ? '220px' : '180px',
           overflow: 'hidden',
-          transition: 'opacity 0.45s ease, maxHeight 0.5s cubic-bezier(0.4, 0, 0.2, 1), marginBottom 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: rixMsgs.length > 0 ? 'translateY(-24px) scale(0.95)' : 'translateY(0) scale(1)',
+          transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), maxHeight 0.8s cubic-bezier(0.4, 0, 0.2, 1), marginBottom 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
         }}>
           <div style={{
             position: 'relative',
