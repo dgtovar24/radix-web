@@ -1437,13 +1437,9 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const taRef = useRef<HTMLTextAreaElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
 
-  // Parse thinking tags from response — only keep thinking if mode is enabled
+  // Parse thinking — now comes from separate reasoning events in streaming
   const parseResponse = (text: string) => {
-    const response = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    if (!thinkingMode) return { thinking: '', response };
-    const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
-    const thinking = thinkMatch ? thinkMatch[1].trim() : '';
-    return { thinking, response };
+    return { thinking: '', response: text };
   };
 
   // Hardcoded history for display
@@ -1527,6 +1523,17 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               try {
                 const json = JSON.parse(data);
                 if (json.error) { fullText = json.error; break; }
+                if (json.reasoning) {
+                  setRixMsgs(prev => {
+                    const copy = [...prev];
+                    const last = copy[copy.length - 1];
+                    if (last?.role === 'assistant') {
+                      const cur = last.thinking || '';
+                      copy[copy.length - 1] = { ...last, thinking: cur + json.reasoning };
+                    }
+                    return copy;
+                  });
+                }
                 if (json.content) {
                   fullText += json.content;
                   setRixMsgs(prev => {
