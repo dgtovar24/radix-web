@@ -538,7 +538,7 @@ function LeftSidebar({
   onCloseMobile: () => void;
   userRole: string;
 }) {
-  const isAdminRole = userRole === 'ADMIN' || userRole === 'Admin';
+  const isAdminRole = true; // Todos los usuarios autenticados ven Configuración
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const navItems = [
     { id: 'home', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', description: 'Resumen operativo: pacientes, tratamientos, alertas y radiación.' },
@@ -714,10 +714,10 @@ function LeftSidebar({
                 fontWeight: 900,
                 fontSize: 13,
               }}>
-                A
+                {(userName || 'U').charAt(0).toUpperCase()}
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>Admin Radix</div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--t, #111827)' }}>{userName || 'Usuario'}</div>
                 <div style={{ fontSize: 11, color: 'var(--t-s, #6b7280)' }}>Sesión activa</div>
               </div>
             </div>
