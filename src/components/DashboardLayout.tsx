@@ -1597,7 +1597,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
         }}
       >
         <div style={{
-          display: 'grid',
+          display: rixMsgs.length > 0 ? 'none' : 'grid',
           gridTemplateColumns: expanded && !isMobile ? '210px minmax(0, 1fr)' : '1fr',
           gap: expanded ? 18 : 16,
           alignItems: 'center',
@@ -1606,7 +1606,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
         }}>
           <div style={{
             position: 'relative',
-            minHeight: expanded ? (isMobile ? 90 : 140) : 90,
+            minHeight: expanded ? (isMobile ? 122 : 176) : 112,
             borderRadius: expanded ? 22 : 20,
             background: 'transparent',
             border: 'none',
@@ -1623,7 +1623,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               src="/rix-saludando.png"
               alt="Rix saludando"
               style={{
-                width: expanded ? (isMobile ? 90 : 130) : 100,
+                width: expanded ? (isMobile ? 116 : 174) : 128,
                 maxWidth: '100%',
                 height: 'auto',
                 objectFit: 'contain',
@@ -1637,9 +1637,9 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
             <h1 style={{
               margin: 0,
               color: 'var(--t, #111827)',
-              fontSize: expanded ? (isMobile ? 20 : 24) : 18,
-              lineHeight: 1.1,
-              letterSpacing: '-0.02em',
+              fontSize: expanded ? (isMobile ? 27 : 36) : 26,
+              lineHeight: 1,
+              letterSpacing: '-0.03em',
               fontWeight: 900,
               maxWidth: expanded ? 900 : 380,
             }}>
@@ -1647,10 +1647,10 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
             </h1>
             <p style={{
               maxWidth: 900,
-              margin: '10px 0 0',
+              margin: '12px 0 0',
               color: 'var(--t-s, #6b7280)',
-              fontSize: expanded ? 13 : 12,
-              lineHeight: 1.45,
+              fontSize: expanded ? 14 : 13,
+              lineHeight: 1.5,
             }}>
               Rix conecta contexto de pacientes, tratamientos y alertas en una conversación pensada para equipos médicos.
             </p>
