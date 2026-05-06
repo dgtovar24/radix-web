@@ -1432,8 +1432,10 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
   const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; thinking?: string; time: string}>>([]);
   const [thinking, setThinking] = useState(false);
+  const [attachments, setAttachments] = useState<Array<{name: string; url: string; type: string}>>([]);
   const { sendQuery, responses: wsResponses, connected: rixConnected } = useWebSocketRix();
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
 
   // Parse thinking — now comes from separate reasoning events in streaming
@@ -1476,14 +1478,34 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight;
   }, [rixMsgs]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await fetch('https://api.raddix.pro/v1/api/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      setAttachments(prev => [...prev, { name: data.originalName || file.name, url: `https://api.raddix.pro/v1${data.url}`, type: file.type }]);
+    } catch {}
+  };
+
   const sendRixMessage = () => {
     const text = rixPrompt.trim();
-    if (!text) return;
+    if (!text && attachments.length === 0) return;
     setIsRixConversationOpen(true);
     setShowHistoryPanel(false);
     setShowGroupsPanel(false);
-    setRixMsgs(prev => [...prev, { role: 'user', text, time: new Date().toISOString() }]);
+
+    let fullText = text;
+    if (attachments.length > 0) {
+      fullText = (text || 'Analiza este archivo')
+        + '\n\n[Archivos adjuntos: ' + attachments.map(a => a.name).join(', ') + ']';
+    }
+
+    setRixMsgs(prev => [...prev, { role: 'user', text: fullText, time: new Date().toISOString() }]);
     setRixPrompt('');
+    setAttachments([]);
     setRixSubmitStatus('');
     setThinking(true);
 
@@ -1937,6 +1959,22 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               `}</style>
             </div>
           )}
+          {attachments.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px 0 6px' }}>
+              {attachments.map((a, i) => (
+                <span key={i} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 8px',
+                  borderRadius: 6, fontSize: 10, background: 'var(--b)', border: '1px solid var(--br)',
+                  color: 'var(--t)', fontWeight: 600,
+                }}>
+                  {a.type.startsWith('image/') ? '🖼️' : '📎'} {a.name.length > 20 ? a.name.slice(0, 18) + '..' : a.name}
+                  <button onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-s)', fontSize: 11, padding: 0, lineHeight: 1 }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+          <input ref={fileRef} type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept="image/*,.pdf,.txt,.csv,.json,.md,.doc,.docx" />
           <textarea
             ref={taRef}
             value={rixPrompt}
@@ -1958,7 +1996,14 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               overflow: 'hidden',
             }}
           />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+            <button type="button" onClick={() => fileRef.current?.click()} title="Adjuntar archivo" style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 36, height: 36, borderRadius: 12, border: '1px solid var(--br)',
+              background: 'var(--sf)', color: 'var(--t-s)', cursor: 'pointer',
+            }}>
+              <Paperclip size={16} />
+            </button>
             <button type="button" aria-label="Enviar mensaje a Rix" onClick={sendRixMessage} style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 40, height: 40, borderRadius: 14, border: 'none',
