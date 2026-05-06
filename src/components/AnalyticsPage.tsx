@@ -30,6 +30,8 @@ export default function AnalyticsPage() {
   const [modal, setModal] = useState<any>(null);
   const [ChartComponents, setChartComponents] = useState<any>(null);
   const [savedCharts, setSavedCharts] = useState<SavedChart[]>([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveName, setSaveName] = useState('');
 
   useEffect(() => {
     fetch(`${API}/api/analytics/schema`).then(r => r.json()).then(d => {
@@ -42,12 +44,18 @@ export default function AnalyticsPage() {
 
   const saveCurrent = () => {
     if (!selTable || !selX || !selY || chartData.length === 0) return;
-    const label = prompt('Nombre para este gráfico:', `${tables.find(t=>t.id===selTable)?.label || selTable} — ${selChart}`);
-    if (!label) return;
-    const chart: SavedChart = { id: Date.now().toString(), label, table: selTable, xColumn: selX, yColumn: selY, chartType: selChart, createdAt: new Date().toISOString() };
+    const defaultName = `${tables.find(t=>t.id===selTable)?.label || selTable} — ${selChart}`;
+    setSaveName(defaultName);
+    setShowSaveModal(true);
+  };
+
+  const confirmSave = () => {
+    if (!saveName.trim()) return;
+    const chart: SavedChart = { id: Date.now().toString(), label: saveName.trim(), table: selTable, xColumn: selX, yColumn: selY, chartType: selChart, createdAt: new Date().toISOString() };
     const updated = [...savedCharts, chart];
     setSavedCharts(updated);
     saveCharts(updated);
+    setShowSaveModal(false);
   };
 
   const loadChart = (c: SavedChart) => {
@@ -150,7 +158,34 @@ export default function AnalyticsPage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--t)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</div>
                       <div style={{ fontSize: 9, color: 'var(--t-s)' }}>{c.table} · {c.chartType}</div>
-                    </div>
+      {/* MODAL — Save Chart */}
+      {showSaveModal && (
+        <div onClick={() => setShowSaveModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--sf)', borderRadius: 18, padding: 28, maxWidth: 420, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--t)', margin: 0 }}>Guardar Gráfico</h2>
+              <button onClick={() => setShowSaveModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-s)' }}><X size={20} /></button>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--t-s)', marginBottom: 14 }}>Dale un nombre descriptivo para identificarlo en el dashboard.</p>
+            <input
+              autoFocus
+              value={saveName}
+              onChange={e => setSaveName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') confirmSave(); }}
+              placeholder="Ej: BPM medio por paciente"
+              style={{
+                width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--br)',
+                background: 'var(--b)', color: 'var(--t)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowSaveModal(false)} style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid var(--br)', background: 'var(--sf)', color: 'var(--t)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={confirmSave} disabled={!saveName.trim()} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: saveName.trim() ? 'var(--p)' : 'var(--br)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: saveName.trim() ? 'pointer' : 'default' }}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
                     <button onClick={() => loadChart(c)} title="Cargar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--p)', padding: 4 }}><Play size={14} /></button>
                     <button onClick={() => deleteChart(c.id)} title="Eliminar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t-s)', padding: 4 }}><Trash2 size={14} /></button>
                   </div>
