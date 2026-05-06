@@ -1648,7 +1648,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               marginBottom: 14,
             }}>
               <Sparkles size={14} />
-              Rix online
+              MiniMax M2.7
             </div>
             <h1 style={{
               margin: 0,
@@ -1657,12 +1657,12 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               lineHeight: 1,
               letterSpacing: '-0.03em',
               fontWeight: 900,
-              maxWidth: expanded ? 470 : 292,
+              maxWidth: expanded ? 700 : 340,
             }}>
               Rix para decisiones clínicas.
             </h1>
             <p style={{
-              maxWidth: 520,
+              maxWidth: 700,
               margin: '12px 0 0',
               color: 'var(--t-s, #6b7280)',
               fontSize: expanded ? 14 : 13,
