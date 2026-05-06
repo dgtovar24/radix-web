@@ -257,6 +257,8 @@ export interface Treatment {
   id: number; patientId: number; patientName: string; doctorId: number; doctorName: string;
   isotopeId: number; isotopeName: string; room: number; initialDose: number; safetyThreshold: number;
   isolationDays: number; startDate: string; endDate?: string; isActive: boolean; currentRadiation?: number;
+  physicalHalfLife?: number; biologicalHalfLife?: number; effectiveHalfLife?: number; halfLifeUnit?: string;
+  calculationSteps?: string[];
 }
 
 export interface SmartwatchResponse {
