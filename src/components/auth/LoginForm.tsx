@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { Activity, Lock, User, Shield, AlertCircle } from 'lucide-react';
 
-const API_URL = 'https://api.raddix.pro/v1';
+const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  ? 'http://localhost:8080/v2'
+  : 'https://api.raddix.pro/v1';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');

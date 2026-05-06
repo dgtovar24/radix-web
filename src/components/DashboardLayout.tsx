@@ -529,6 +529,7 @@ function LeftSidebar({
   onChatClick,
   onCloseMobile,
   userRole,
+  userName,
 }: {
   activeNav: string;
   activeRightTab: RightPanelTab;
@@ -540,7 +541,7 @@ function LeftSidebar({
   userRole: string;
   userName: string;
 }) {
-  const isAdminRole = true; // Todos los usuarios autenticados ven Configuración
+  const isAdminRole = userRole === 'ADMIN' || userRole === 'Admin';
   const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const navItems = [
     { id: 'home', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', description: 'Resumen operativo: pacientes, tratamientos, alertas y radiación.' },

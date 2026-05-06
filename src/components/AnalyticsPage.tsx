@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { BarChart3, TrendingUp, PieChart, AreaChart, Target, ScatterChart, Search, X, FlaskConical, Activity, ChevronDown } from 'lucide-react';
 
-const API = 'https://api.raddix.pro/v1';
+const API = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  ? 'http://localhost:8080/v2'
+  : 'https://api.raddix.pro/v1';
 const chartIcons: Record<string, any> = { BarChart3, TrendingUp, PieChart, AreaChart, Target, ScatterChart };
 
 interface Column { key: string; label: string; type: string; }
