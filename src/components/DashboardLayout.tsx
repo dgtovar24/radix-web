@@ -1432,7 +1432,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
   const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; thinking?: string; time: string}>>([]);
   const [thinking, setThinking] = useState(false);
-  const [attachments, setAttachments] = useState<Array<{name: string; url: string; type: string}>>([]);
+  const [attachments, setAttachments] = useState<Array<{name: string; url: string; type: string; text?: string}>>([]);
   const { sendQuery, responses: wsResponses, connected: rixConnected } = useWebSocketRix();
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1483,10 +1483,31 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     if (!file) return;
     const form = new FormData();
     form.append('file', file);
+
+    // Read text content for supported types
+    let textContent = '';
+    const textTypes = ['text/', 'application/json', 'application/xml', '.md', '.csv', '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.yml', '.yaml', '.toml'];
+    const isText = textTypes.some(t => file.type.startsWith(t) || file.name.endsWith(t));
+    if (isText) {
+      try {
+        textContent = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsText(file);
+        });
+      } catch {}
+    }
+
     try {
       const res = await fetch('https://api.raddix.pro/v1/api/upload', { method: 'POST', body: form });
       const data = await res.json();
-      setAttachments(prev => [...prev, { name: data.originalName || file.name, url: `https://api.raddix.pro/v1${data.url}`, type: file.type }]);
+      setAttachments(prev => [...prev, {
+        name: data.originalName || file.name,
+        url: `https://api.raddix.pro/v1${data.url}`,
+        type: file.type,
+        text: textContent.slice(0, 8000), // Limit text to avoid token overflow
+      }]);
     } catch {}
   };
 
@@ -1497,10 +1518,16 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     setShowHistoryPanel(false);
     setShowGroupsPanel(false);
 
-    let fullText = text;
+    let fullText = text || 'Analiza este archivo adjunto';
     if (attachments.length > 0) {
-      fullText = (text || 'Analiza este archivo')
-        + '\n\n[Archivos adjuntos: ' + attachments.map(a => a.name).join(', ') + ']';
+      const fileInfo = attachments.map(a => {
+        let info = `\n### Archivo: ${a.name} (${a.type || 'desconocido'})`;
+        if (a.text) {
+          info += `\n\`\`\`\n${a.text}\n\`\`\``;
+        }
+        return info;
+      }).join('\n');
+      fullText = fullText + '\n' + fileInfo;
     }
 
     setRixMsgs(prev => [...prev, { role: 'user', text: fullText, time: new Date().toISOString() }]);
