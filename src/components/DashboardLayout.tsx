@@ -1377,6 +1377,36 @@ function EmptyInline({ text }: { text: string }) {
   );
 }
 
+function ThinkingBubble({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  if (!text) return null;
+  return (
+    <div style={{ maxWidth: '85%', marginBottom: 4 }}>
+      <button type="button" onClick={() => setOpen(!open)} style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '4px 10px', borderRadius: 8, border: 'none',
+        background: 'rgba(109,50,232,0.06)', color: 'var(--t-s, #6b7280)',
+        fontSize: 11, cursor: 'pointer', opacity: 0.6,
+        fontFamily: "'Inter', sans-serif",
+      }}>
+        <Sparkles size={12} />
+        {open ? 'Ocultar razonamiento' : 'Ver razonamiento'}
+        <span style={{ fontSize: 9, marginLeft: 2 }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{
+          marginTop: 4, padding: '8px 12px',
+          borderRadius: 10, background: 'rgba(109,50,232,0.04)',
+          border: '1px solid rgba(109,50,232,0.1)',
+          fontSize: 11, lineHeight: 1.5, color: 'var(--t-s, #6b7280)',
+          opacity: 0.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          maxHeight: 160, overflowY: 'auto',
+        }}>{text}</div>
+      )}
+    </div>
+  );
+}
+
 function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean }) {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [activeRixChat, setActiveRixChat] = useState<string | number>('');
@@ -1388,10 +1418,19 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [rixPrompt, setRixPrompt] = useState('');
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
   const [thinkingMode, setThinkingMode] = useState(false);
-  const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; time: string}>>([]);
+  const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; thinking?: string; time: string}>>([]);
+  const [thinking, setThinking] = useState(false);
   const { sendQuery, responses: wsResponses, connected: rixConnected } = useWebSocketRix();
   const taRef = useRef<HTMLTextAreaElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
+
+  // Parse thinking tags from response
+  const parseResponse = (text: string) => {
+    const thinkMatch = text.match(/<think>([\s\S]*?)<\/think>/);
+    const thinking = thinkMatch ? thinkMatch[1].trim() : '';
+    const response = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    return { thinking, response };
+  };
 
   // Hardcoded history for display
   const chats = [
@@ -1437,6 +1476,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     setRixMsgs(prev => [...prev, { role: 'user', text, time: new Date().toISOString() }]);
     setRixPrompt('');
     setRixSubmitStatus('');
+    setThinking(true); // Show thinking indicator
 
     // Try WebSocket first
     const sent = sendQuery(text);
@@ -1451,12 +1491,38 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: text, systemContext: ctx || undefined, thinking: thinkingMode }),
       }).then(r => r.json()).then(data => {
-        setRixMsgs(prev => [...prev, { role: 'assistant', text: data.response || data.error || 'Sin respuesta', time: new Date().toISOString() }]);
+        const raw = data.response || data.error || 'Sin respuesta';
+        const { thinking: th, response } = parseResponse(raw);
+        setRixMsgs(prev => [...prev, { role: 'assistant', text: response, thinking: th || undefined, time: new Date().toISOString() }]);
+        setThinking(false);
       }).catch(() => {
         setRixSubmitStatus('No se pudo contactar con Rix. Intenta de nuevo.');
+        setThinking(false);
       });
+    } else {
+      // WebSocket sent — wait for response to come back via wsResponses
+      // If no response after 15s, stop thinking indicator
+      setTimeout(() => setThinking(false), 15000);
     }
   };
+
+  // When WebSocket responses arrive, parse them and stop thinking
+  useEffect(() => {
+    if (wsResponses.length > 0) {
+      const last = wsResponses[wsResponses.length - 1];
+      const raw = last.text || '';
+      if (raw && raw.length > 3) {
+        const { thinking: th, response } = parseResponse(raw);
+        setRixMsgs(prev => {
+          // Avoid duplicates
+          const exists = prev.some(m => m.role === 'assistant' && m.text === response);
+          if (exists) return prev;
+          return [...prev, { role: 'assistant', text: response, thinking: th || undefined, time: last.timestamp || new Date().toISOString() }];
+        });
+        setThinking(false);
+      }
+    }
+  }, [wsResponses.length]);
 
   const toggleDoctor = (id: string | number) => {
     setSelectedDoctors(c => c.includes(id) ? c.filter(i => i !== id) : [...c, id]);
@@ -1788,35 +1854,43 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               marginBottom: 12, maxHeight: isMobile ? 240 : 280, overflowY: 'auto',
               animation: 'rixPanelReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1)',
             }}>
-              {rixMsgs.length === 0 && wsResponses.length === 0 && (
+              {rixMsgs.length === 0 && !thinking && (
                 <EmptyInline text="Escribe tu consulta clínica y Rix te responderá con MiniMax M2.7." />
               )}
-              {rixMsgs.map((m, i) => (
-                <div key={`u${i}`} style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+              {rixMsgs.map((m, i) => {
+                const isUser = m.role === 'user';
+                return (
+                <div key={i} style={{
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: isUser ? 'flex-end' : 'flex-start',
                 }}>
+                  {m.thinking && <ThinkingBubble text={m.thinking} />}
                   <div style={{
                     maxWidth: '85%', padding: '10px 14px',
-                    borderRadius: '16px 16px 4px 16px',
-                    background: 'var(--p, #6d32e8)', color: '#ffffff',
+                    borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    background: isUser ? 'var(--p, #6d32e8)' : 'var(--b, #f3f4f6)',
+                    color: isUser ? '#ffffff' : 'var(--t, #111827)',
                     fontSize: 13, lineHeight: 1.5,
                     whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                   }}>{m.text}</div>
                 </div>
-              ))}
-              {wsResponses.map((r: any, i: number) => (
-                <div key={`a${i}`} style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-                }}>
+                );
+              })}
+              {thinking && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
                   <div style={{
-                    maxWidth: '85%', padding: '10px 14px',
-                    borderRadius: '16px 16px 16px 4px',
-                    background: 'var(--b, #f3f4f6)', color: 'var(--t, #111827)',
-                    fontSize: 13, lineHeight: 1.5,
-                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  }}>{r.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()}</div>
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: 'var(--p, #6d32e8)',
+                    animation: 'rixPulse 1.5s ease-in-out infinite',
+                  }} />
+                  <span style={{ fontSize: 12, color: 'var(--t-s)', opacity: 0.6, fontStyle: 'italic' }}>
+                    Pensando...
+                  </span>
                 </div>
-              ))}
+              )}
+              <style>{`
+                @keyframes rixPulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+              `}</style>
             </div>
           )}
           <textarea
