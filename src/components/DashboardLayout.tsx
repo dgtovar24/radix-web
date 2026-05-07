@@ -1400,7 +1400,7 @@ function ThinkingBubble({ text }: { text: string }) {
         padding: '4px 10px', borderRadius: 8, border: 'none',
         background: 'rgba(109,50,232,0.06)', color: 'var(--t-s, #6b7280)',
         fontSize: 11, cursor: 'pointer', opacity: 0.6,
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "'Inter', sans-serif", marginBottom: 4,
       }}>
         <Sparkles size={12} />
         {open ? 'Ocultar razonamiento' : 'Ver razonamiento'}
@@ -1409,10 +1409,12 @@ function ThinkingBubble({ text }: { text: string }) {
       {open && (
         <div style={{
           marginTop: 4, padding: '8px 12px',
-          borderRadius: 10, background: 'rgba(109,50,232,0.04)',
-          border: '1px solid rgba(109,50,232,0.1)',
-          fontSize: 11, lineHeight: 1.5, color: 'var(--t-s, #6b7280)',
-          opacity: 0.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          borderRadius: 10,
+          background: 'var(--b, #f9fafb)',
+          border: '1px solid var(--br, #e5e7eb)',
+          borderLeft: '3px solid #a78bfa',
+          fontSize: 11, lineHeight: 1.5, color: '#4b5563',
+          opacity: 0.85, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
           maxHeight: 160, overflowY: 'auto',
         }}>{text}</div>
       )}
@@ -1988,7 +1990,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
         }}>
           {isRixConversationOpen && (
             <div ref={msgsRef} style={{
-              display: 'flex', flexDirection: 'column', gap: 6,
+              display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8,
               marginBottom: 12, maxHeight: isMobile ? '70vh' : '80vh', minHeight: isRixConversationOpen ? (isMobile ? 180 : 200) : 'auto', overflowY: 'auto',
               animation: 'rixPanelReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1)',
             }}>
@@ -2063,7 +2065,9 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
             border: '1px solid var(--br, #e5e7eb)',
             borderRadius: 18,
             background: 'var(--sf, #ffffff)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             padding: '10px 14px 8px',
+            marginTop: 12,
           }}>
           <textarea
             ref={taRef}
