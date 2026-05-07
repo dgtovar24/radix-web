@@ -1984,14 +1984,16 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
           borderRadius: expanded ? 22 : 18,
           boxShadow: isRixConversationOpen ? '0 22px 70px rgba(109,50,232,0.14)' : (expanded ? '0 18px 55px rgba(0,0,0,0.08)' : '0 8px 24px rgba(0,0,0,0.05)'),
           padding: expanded ? 18 : 14,
-          minHeight: isRixConversationOpen ? (isMobile ? 430 : 420) : 'auto',
+          display: 'flex', flexDirection: 'column',
+          minHeight: isRixConversationOpen ? (isMobile ? 350 : 380) : 'auto',
+          maxHeight: isRixConversationOpen ? (isMobile ? '85vh' : '82vh') : 'none',
           transform: isRixConversationOpen ? 'translateY(-4px)' : 'translateY(0)',
-          transition: 'min-height 0.56s cubic-bezier(0.16, 1, 0.3, 1), transform 0.56s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.3s ease, box-shadow 0.3s ease',
+          transition: 'min-height 0.56s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.56s cubic-bezier(0.16, 1, 0.3, 1), transform 0.56s cubic-bezier(0.16, 1, 0.3, 1)',
         }}>
           {isRixConversationOpen && (
             <div ref={msgsRef} style={{
-              display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8,
-              marginBottom: 12, maxHeight: isMobile ? '70vh' : '80vh', minHeight: isRixConversationOpen ? (isMobile ? 180 : 200) : 'auto', overflowY: 'auto',
+              flex: 1, display: 'flex', flexDirection: 'column', gap: 6,
+              overflowY: 'auto', paddingBottom: 8,
               animation: 'rixPanelReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1)',
             }}>
               {rixMsgs.length === 0 && !thinking && (
