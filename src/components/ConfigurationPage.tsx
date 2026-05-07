@@ -83,7 +83,7 @@ export default function ConfigurationPage() {
 
   const [ai, setAi] = useState({
     provider: 'deepseek',
-    model: 'deepseek-v4-pro',
+    model: 'deepseek-v4-flash',
     apiKey: '',
     baseUrl: 'https://api.deepseek.io/v1',
     temperature: '0.7',
@@ -98,7 +98,7 @@ export default function ConfigurationPage() {
       if (data.configured) {
         setAi({
           provider: data.provider || 'deepseek',
-          model: data.model || 'deepseek-v4-pro',
+          model: data.model || 'deepseek-v4-flash',
           apiKey: data.apiKey || '',
           baseUrl: data.baseUrl || 'https://api.deepseek.io/v1',
           temperature: String(data.temperature ?? 0.7),
@@ -407,7 +407,7 @@ export default function ConfigurationPage() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <SelectField label="Proveedor" value={ai.provider} onChange={(value) => setAi({ ...ai, provider: value })} options={['deepseek', 'openai', 'anthropic', 'custom']} />
-                  <TextField label="Modelo" value={ai.model} onChange={(value) => setAi({ ...ai, model: value })} placeholder="deepseek-v4-pro" />
+                  <TextField label="Modelo" value={ai.model} onChange={(value) => setAi({ ...ai, model: value })} placeholder="deepseek-v4-flash" />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

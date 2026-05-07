@@ -1431,8 +1431,9 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [rixPrompt, setRixPrompt] = useState('');
   const [rixSubmitStatus, setRixSubmitStatus] = useState('');
   const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; thinking?: string; time: string}>>([]);
-  const [thinkingMode, setThinkingMode] = useState(true);
+  const [proMode, setProMode] = useState(false);
   const [thinking, setThinking] = useState(false);
+  const [convHistory, setConvHistory] = useState<Array<any>>([]);
   const [attachments, setAttachments] = useState<Array<{name: string; url: string; type: string; text?: string}>>([]);
   const { sendQuery, responses: wsResponses, connected: rixConnected } = useWebSocketRix();
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -1537,24 +1538,41 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     setRixSubmitStatus('');
     setThinking(true);
 
-    // Build system context with thinking instruction
-    const ctx = selectedDoctors.length > 0
-      ? `Contexto clínico — médicos presentes: ${selectedDoctorSummary}. `
-      : '';
+    const model = proMode ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
 
     // Try WebSocket first
     const sent = sendQuery(text);
     if (!sent) {
       const API_URL = 'https://api.raddix.pro/v1';
+
+      // Build messages array for conversation history (Pro mode)
+      const sysMsg = selectedDoctors.length > 0
+        ? `Eres Rix-Pro. Contexto clínico — médicos presentes: ${selectedDoctorSummary}. Responde en español concisamente, basado en evidencia. Formatea con Markdown.`
+        : 'Eres Rix. Responde en español concisamente, basado en evidencia. Formatea con Markdown cuando sea útil.';
+
+      const messages = proMode
+        ? [
+            { role: 'system', content: sysMsg },
+            ...convHistory,
+            { role: 'user', content: fullText }
+          ]
+        : undefined;
+
+      // Update conversation history for next turn
+      if (proMode) {
+        setConvHistory(prev => [...prev, { role: 'user', content: fullText }]);
+      }
+
       fetch(`${API_URL}/api/config/ai/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: fullText, systemContext: ctx || undefined, thinking: thinkingMode }),
+        body: JSON.stringify({ query: fullText, model, messages, thinking: true }),
       }).then(async (res) => {
         const reader = res.body?.getReader();
         if (!reader) { setThinking(false); return; }
         const decoder = new TextDecoder();
-        let fullText = '';
+        let fullResp = '';
+        let fullReasoning = '';
         setRixMsgs(prev => [...prev, { role: 'assistant', text: '', time: new Date().toISOString() }]);
 
         while (true) {
@@ -1568,26 +1586,25 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               if (data === '[DONE]') break;
               try {
                 const json = JSON.parse(data);
-                if (json.error) { fullText = json.error; break; }
+                if (json.error) { fullResp = json.error; break; }
                 if (json.reasoning) {
+                  fullReasoning += json.reasoning;
                   setRixMsgs(prev => {
                     const copy = [...prev];
                     const last = copy[copy.length - 1];
                     if (last?.role === 'assistant') {
-                      const cur = last.thinking || '';
-                      copy[copy.length - 1] = { ...last, thinking: cur + json.reasoning };
+                      copy[copy.length - 1] = { ...last, thinking: fullReasoning };
                     }
                     return copy;
                   });
                 }
                 if (json.content) {
-                  fullText += json.content;
+                  fullResp += json.content;
                   setRixMsgs(prev => {
                     const copy = [...prev];
                     const last = copy[copy.length - 1];
                     if (last?.role === 'assistant') {
-                      const { thinking: th, response } = parseResponse(fullText);
-                      copy[copy.length - 1] = { ...last, text: response, thinking: th || undefined };
+                      copy[copy.length - 1] = { ...last, text: fullResp };
                     }
                     return copy;
                   });
@@ -1597,6 +1614,9 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
           }
         }
         setThinking(false);
+        if (proMode && fullResp) {
+          setConvHistory(prev => [...prev, { role: 'assistant', content: fullResp }]);
+        }
       }).catch(() => {
         setRixSubmitStatus('No se pudo contactar con Rix. Intenta de nuevo.');
         setThinking(false);
@@ -2025,16 +2045,22 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
             }}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 12 }}>
-            <button type="button" onClick={() => setThinkingMode(!thinkingMode)}
-              title={thinkingMode ? 'Razonamiento activado' : 'Razonamiento desactivado'} style={{
+            <button type="button" onClick={() => {
+                if (proMode) { setConvHistory([]); setRixMsgs([]); setProMode(false); setIsRixConversationOpen(false); setShowHistoryPanel(true); setShowGroupsPanel(true); }
+                else setProMode(true);
+              }}
+              title={proMode ? 'Clic para desactivar Modo Pro (nueva sesión)' : 'Activar Modo Pro con deepseek-v4-pro'} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 12px', borderRadius: 10, border: thinkingMode ? '1px solid var(--p, #6d32e8)' : '1px solid var(--br, #e5e7eb)',
-                background: thinkingMode ? 'color-mix(in srgb, var(--p, #6d32e8) 10%, #ffffff)' : 'var(--b, #f8fafc)',
-                color: thinkingMode ? 'var(--p, #6d32e8)' : 'var(--t-s, #6b7280)',
+                padding: '7px 12px', borderRadius: 10,
+                border: proMode ? '1px solid #f59e0b' : '1px solid var(--br, #e5e7eb)',
+                background: proMode ? 'rgba(245,158,11,0.1)' : 'var(--b, #f8fafc)',
+                color: proMode ? '#d97706' : 'var(--t-s, #6b7280)',
                 fontSize: 11, fontWeight: 700, cursor: 'pointer',
               }}>
               <Sparkles size={13} />
-              Razonar
+              Modo Pro
+              {proMode && <span style={{ fontSize: 9, background: '#f59e0b', color: '#fff', padding: '1px 5px', borderRadius: 4, fontWeight: 800 }}>PRO</span>}
+              {!proMode && <span style={{ fontSize: 9, color: 'var(--t-s)', fontWeight: 400 }}>Flash</span>}
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button type="button" onClick={() => fileRef.current?.click()} title="Adjuntar archivo" style={{
