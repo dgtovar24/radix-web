@@ -2107,23 +2107,24 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               {proMode && <span style={{ fontSize: 8, background: '#f59e0b', color: '#fff', padding: '1px 4px', borderRadius: 3, fontWeight: 800 }}>PRO</span>}
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {thinking && (
+              {thinking ? (
                 <button type="button" onClick={() => { abortRef.current?.abort(); setThinking(false); }}
                   style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    padding: '5px 10px', borderRadius: 8, border: '1px solid #ef4444',
-                    background: 'rgba(239,68,68,0.08)', color: '#ef4444',
-                    fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                  }}><X size={13} /> Cancelar</button>
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 36, height: 36, borderRadius: 12, border: 'none',
+                    background: '#ef4444', color: '#ffffff',
+                    cursor: 'pointer', transition: 'background 0.2s',
+                  }}><div style={{ width: 13, height: 13, borderRadius: 3, background: '#fff' }} /></button>
+              ) : (
+                <button type="button" aria-label="Enviar" onClick={sendRixMessage} style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 36, height: 36, borderRadius: 12, border: 'none',
+                  background: rixPrompt.trim() ? 'var(--p, #3b82f6)' : 'var(--br)',
+                  color: rixPrompt.trim() ? '#ffffff' : 'var(--t-s)',
+                  cursor: rixPrompt.trim() ? 'pointer' : 'default',
+                  transition: 'background 0.2s',
+                }}><Send size={16} /></button>
               )}
-              <button type="button" aria-label="Enviar" onClick={sendRixMessage} style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: 36, height: 36, borderRadius: 12, border: 'none',
-                background: rixPrompt.trim() ? 'var(--p, #3b82f6)' : 'var(--br)',
-                color: rixPrompt.trim() ? '#ffffff' : 'var(--t-s)',
-                cursor: rixPrompt.trim() ? 'pointer' : 'default',
-                transition: 'background 0.2s',
-              }}><Send size={16} /></button>
             </div>
           </div>
           </div>
