@@ -1435,12 +1435,12 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const [rixMsgs, setRixMsgs] = useState<Array<{role: string; text: string; thinking?: string; time: string}>>([]);
   const [proMode, setProMode] = useState(false);
   const [thinking, setThinking] = useState(false);
-  const [convHistory, setConvHistory] = useState<Array<any>>([]);
   const [attachments, setAttachments] = useState<Array<{name: string; url: string; type: string; text?: string}>>([]);
   const { sendQuery, responses: wsResponses, connected: rixConnected } = useWebSocketRix();
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const msgsRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Parse thinking — now comes from separate reasoning events in streaming
   const parseResponse = (text: string) => {
@@ -1561,40 +1561,27 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
 
     setRixMsgs(prev => [...prev, { role: 'user', text: fullText, time: new Date().toISOString() }]);
     setRixPrompt('');
-    setAttachments([]);
     setRixSubmitStatus('');
     setThinking(true);
 
     const model = proMode ? 'deepseek-v4-pro' : 'deepseek-v4-flash';
 
-    // Try WebSocket first
-    const sent = sendQuery(text);
-    if (!sent) {
-      const API_URL = 'https://api.raddix.pro/v1';
+    // Always send conversation history
+    const sysMsg = selectedDoctors.length > 0
+      ? `Eres Rix. Contexto clínico — médicos presentes: ${selectedDoctorSummary}. Responde en español, basado en evidencia. Recuerda la conversación.`
+      : 'Eres Rix. Responde en español, basado en evidencia. Recuerda la conversación.';
+    const history = rixMsgs.map(m => ({ role: m.role, content: m.text }));
+    const messages = [{ role: 'system', content: sysMsg }, ...history, { role: 'user', content: fullText }];
 
-      // Build messages array for conversation history (Pro mode)
-      const sysMsg = selectedDoctors.length > 0
-        ? `Eres Rix-Pro. Contexto clínico — médicos presentes: ${selectedDoctorSummary}. Responde en español concisamente, basado en evidencia. Formatea con Markdown.`
-        : 'Eres Rix. Responde en español concisamente, basado en evidencia. Formatea con Markdown cuando sea útil.';
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-      const messages = proMode
-        ? [
-            { role: 'system', content: sysMsg },
-            ...convHistory,
-            { role: 'user', content: fullText }
-          ]
-        : undefined;
-
-      // Update conversation history for next turn
-      if (proMode) {
-        setConvHistory(prev => [...prev, { role: 'user', content: fullText }]);
-      }
-
-      fetch(`${API_URL}/api/config/ai/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: fullText, model, messages, thinking: true }),
-      }).then(async (res) => {
+    const API_URL = 'https://api.raddix.pro/v1';
+    fetch(`${API_URL}/api/config/ai/stream`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: fullText, model, messages, thinking: true }),
+      signal: controller.signal,
+    }).then(async (res) => {
         const reader = res.body?.getReader();
         if (!reader) { setThinking(false); return; }
         const decoder = new TextDecoder();
@@ -1641,18 +1628,10 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
           }
         }
         setThinking(false);
-        if (proMode && fullResp) {
-          setConvHistory(prev => [...prev, { role: 'assistant', content: fullResp }]);
-        }
       }).catch(() => {
         setRixSubmitStatus('No se pudo contactar con Rix. Intenta de nuevo.');
         setThinking(false);
       });
-    } else {
-      // WebSocket sent — wait for response to come back via wsResponses
-      // If no response after 15s, stop thinking indicator
-      setTimeout(() => setThinking(false), 15000);
-    }
   };
 
   // When WebSocket responses arrive, parse them and stop thinking
@@ -2112,7 +2091,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
             <button type="button" onClick={() => {
-                if (proMode) { setConvHistory([]); setRixMsgs([]); setProMode(false); setIsRixConversationOpen(false); setShowHistoryPanel(true); setShowGroupsPanel(true); }
+                if (proMode) { setRixMsgs([]); setProMode(false); setIsRixConversationOpen(false); setShowHistoryPanel(true); setShowGroupsPanel(true); }
                 else setProMode(true);
               }}
               title={proMode ? 'Desactivar Modo Pro (nueva sesión)' : 'Activar Modo Pro'} style={{
@@ -2128,23 +2107,23 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               {proMode && <span style={{ fontSize: 8, background: '#f59e0b', color: '#fff', padding: '1px 4px', borderRadius: 3, fontWeight: 800 }}>PRO</span>}
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button type="button" onClick={() => fileRef.current?.click()} title="Adjuntar archivo" style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                width: 32, height: 32, borderRadius: 10, border: '1px solid var(--br)',
-                background: 'var(--sf)', color: 'var(--t-s)', cursor: 'pointer',
-              }}>
-                <Paperclip size={15} />
-              </button>
+              {thinking && (
+                <button type="button" onClick={() => { abortRef.current?.abort(); setThinking(false); }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '5px 10px', borderRadius: 8, border: '1px solid #ef4444',
+                    background: 'rgba(239,68,68,0.08)', color: '#ef4444',
+                    fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  }}><X size={13} /> Cancelar</button>
+              )}
               <button type="button" aria-label="Enviar" onClick={sendRixMessage} style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 width: 36, height: 36, borderRadius: 12, border: 'none',
-                background: rixPrompt.trim() || attachments.length > 0 ? 'var(--p, #3b82f6)' : 'var(--br)',
-                color: rixPrompt.trim() || attachments.length > 0 ? '#ffffff' : 'var(--t-s)',
-                cursor: rixPrompt.trim() || attachments.length > 0 ? 'pointer' : 'default',
+                background: rixPrompt.trim() ? 'var(--p, #3b82f6)' : 'var(--br)',
+                color: rixPrompt.trim() ? '#ffffff' : 'var(--t-s)',
+                cursor: rixPrompt.trim() ? 'pointer' : 'default',
                 transition: 'background 0.2s',
-              }}>
-                <Send size={16} />
-              </button>
+              }}><Send size={16} /></button>
             </div>
           </div>
           </div>
