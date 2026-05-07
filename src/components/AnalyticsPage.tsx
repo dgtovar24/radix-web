@@ -31,6 +31,7 @@ export default function AnalyticsPage() {
   const [useTwoTables, setUseTwoTables] = useState(false);
   const [selTable2, setSelTable2] = useState('');
   const [joinField, setJoinField] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
   const [modal, setModal] = useState<any>(null);
   const [ChartComponents, setChartComponents] = useState<any>(null);
   const [savedCharts, setSavedCharts] = useState<SavedChart[]>([]);
@@ -140,6 +141,10 @@ export default function AnalyticsPage() {
     if (pid) fetch(`${API}/api/analytics/patient/${pid}/full`).then(r => r.json()).then(setModal);
   };
 
+  const fmt = (v: any) => typeof v === 'number' ? v.toFixed(2) : v;
+  const fmtVal = (v: any) => typeof v === 'number' ? v.toFixed(2) : v;
+  const fmtPie = (entry: any) => `${entry.name} (${typeof entry.value === 'number' ? entry.value.toFixed(2) : entry.value})`;
+
   return (
     <div style={{ display: 'flex', gap: 20, fontFamily: "'Inter', sans-serif", minHeight: 'calc(100vh - 200px)' }}>
       <style>{`
@@ -240,34 +245,35 @@ export default function AnalyticsPage() {
               <ChartComponents.BarChart data={chartData} onClick={(e: any) => e?.activePayload?.[0] && handlePointClick(e.activePayload[0].payload)}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} interval={chartData.length > 20 ? Math.floor(chartData.length / 8) : 0} />
-                <ChartComponents.YAxis tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
-                <ChartComponents.Tooltip /><ChartComponents.Bar dataKey="y" fill="var(--p)" radius={[4,4,0,0]} />
+                <ChartComponents.YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
+                <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Bar dataKey="y" fill="var(--p)" radius={[4,4,0,0]} />
               </ChartComponents.BarChart>
             ) : selChart === 'line' ? (
               <ChartComponents.LineChart data={chartData} onClick={(e: any) => e?.activePayload?.[0] && handlePointClick(e.activePayload[0].payload)}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} interval={chartData.length > 20 ? Math.floor(chartData.length / 8) : 0} />
-                <ChartComponents.YAxis tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
-                <ChartComponents.Tooltip /><ChartComponents.Line type="monotone" dataKey="y" stroke="var(--p)" strokeWidth={3} dot={chartData.length <= 30} />
+                <ChartComponents.YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
+                <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Line type="monotone" dataKey="y" stroke="var(--p)" strokeWidth={3} dot={chartData.length <= 30} />
               </ChartComponents.LineChart>
             ) : selChart === 'pie' ? (
               <ChartComponents.PieChart>
-                <ChartComponents.Pie data={chartData} dataKey="y" nameKey="x" cx="50%" cy="50%" outerRadius={120} onClick={(e: any) => handlePointClick(e)}>
+                <ChartComponents.Pie data={chartData} dataKey="y" nameKey="x" cx="50%" cy="50%" outerRadius={120} label={fmtPie} onClick={(e: any) => handlePointClick(e)}>
                   {chartData.map((_: any, i: number) => <ChartComponents.Cell key={i} fill={['var(--p)','var(--s)','#10b981','#f59e0b','#06b6d4','#8b5cf6'][i % 6]} />)}
                 </ChartComponents.Pie>
-                <ChartComponents.Tooltip />
+                <ChartComponents.Tooltip formatter={fmtVal} />
               </ChartComponents.PieChart>
             ) : selChart === 'area' ? (
               <ChartComponents.AreaChart data={chartData} onClick={(e: any) => e?.activePayload?.[0] && handlePointClick(e.activePayload[0].payload)}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
-                <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} /><ChartComponents.YAxis tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
-                <ChartComponents.Tooltip /><ChartComponents.Area type="monotone" dataKey="y" stroke="var(--p)" fill="var(--p)" fillOpacity={0.2} />
+                <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} /><ChartComponents.YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
+                <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Area type="monotone" dataKey="y" stroke="var(--p)" fill="var(--p)" fillOpacity={0.2} />
               </ChartComponents.AreaChart>
             ) : selChart === 'scatter' ? (
               <ChartComponents.ScatterChart>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
-                <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} /><ChartComponents.YAxis dataKey="y" tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
-                <ChartComponents.Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} tickFormatter={fmt} />
+                <ChartComponents.YAxis dataKey="y" tick={{ fontSize: 11, fill: 'var(--t-s)' }} tickFormatter={fmt} />
+                <ChartComponents.Tooltip cursor={{ strokeDasharray: '3 3' }} formatter={(v: any) => typeof v === 'number' ? v.toFixed(2) : v} />
                 <ChartComponents.Scatter data={chartData} fill="var(--p)" onClick={(e: any) => e?.payload && handlePointClick(e.payload)} />
               </ChartComponents.ScatterChart>
             ) : null}
