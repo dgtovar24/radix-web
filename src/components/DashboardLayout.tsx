@@ -1988,7 +1988,7 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
         }}>
           {isRixConversationOpen && (
             <div ref={msgsRef} style={{
-              display: 'flex', flexDirection: 'column', gap: 10,
+              display: 'flex', flexDirection: 'column', gap: 6,
               marginBottom: 12, maxHeight: isMobile ? '70vh' : '80vh', minHeight: isRixConversationOpen ? (isMobile ? 180 : 200) : 'auto', overflowY: 'auto',
               animation: 'rixPanelReveal 0.34s cubic-bezier(0.16, 1, 0.3, 1)',
             }}>
@@ -2004,9 +2004,11 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                 }}>
                   {m.thinking && <ThinkingBubble text={m.thinking} />}
                   <div style={{
-                    maxWidth: '85%', padding: '10px 14px',
+                    maxWidth: '85%', padding: isUser ? '10px 14px' : '14px 18px',
                     borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    background: isUser ? 'var(--p, #6d32e8)' : 'var(--b, #f3f4f6)',
+                    background: isUser ? 'var(--p, #6d32e8)' : 'var(--sf, #ffffff)',
+                    border: isUser ? 'none' : '1px solid var(--br, #e5e7eb)',
+                    boxShadow: isUser ? 'none' : '0 1px 3px rgba(0,0,0,0.04)',
                     color: isUser ? '#ffffff' : 'var(--t, #111827)',
                     fontSize: 13, lineHeight: 1.55,
                     whiteSpace: 'pre-wrap', wordBreak: 'break-word',
@@ -2055,6 +2057,14 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
             </div>
           )}
           <input ref={fileRef} type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept="image/*,.pdf,.txt,.csv,.json,.md,.doc,.docx" />
+
+          {/* Unified input container */}
+          <div className="rix-input-container" style={{
+            border: '1px solid var(--br, #e5e7eb)',
+            borderRadius: 18,
+            background: 'var(--sf, #ffffff)',
+            padding: '10px 14px 8px',
+          }}>
           <textarea
             ref={taRef}
             value={rixPrompt}
@@ -2074,43 +2084,46 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
               boxSizing: 'border-box',
               resize: 'none',
               overflow: 'hidden',
+              minHeight: 28,
             }}
           />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
             <button type="button" onClick={() => {
                 if (proMode) { setConvHistory([]); setRixMsgs([]); setProMode(false); setIsRixConversationOpen(false); setShowHistoryPanel(true); setShowGroupsPanel(true); }
                 else setProMode(true);
               }}
-              title={proMode ? 'Clic para desactivar Modo Pro (nueva sesión)' : 'Activar Modo Pro con deepseek-v4-pro'} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 12px', borderRadius: 10,
+              title={proMode ? 'Desactivar Modo Pro (nueva sesión)' : 'Activar Modo Pro'} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '5px 10px', borderRadius: 8,
                 border: proMode ? '1px solid #f59e0b' : '1px solid var(--br, #e5e7eb)',
-                background: proMode ? 'rgba(245,158,11,0.1)' : 'var(--b, #f8fafc)',
+                background: proMode ? 'rgba(245,158,11,0.08)' : 'var(--b, #f8fafc)',
                 color: proMode ? '#d97706' : 'var(--t-s, #6b7280)',
-                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                fontSize: 10, fontWeight: 700, cursor: 'pointer',
               }}>
-              <Sparkles size={13} />
+              <Sparkles size={12} />
               Modo Pro
-              {proMode && <span style={{ fontSize: 9, background: '#f59e0b', color: '#fff', padding: '1px 5px', borderRadius: 4, fontWeight: 800 }}>PRO</span>}
-              {!proMode && <span style={{ fontSize: 9, color: 'var(--t-s)', fontWeight: 400 }}>Flash</span>}
+              {proMode && <span style={{ fontSize: 8, background: '#f59e0b', color: '#fff', padding: '1px 4px', borderRadius: 3, fontWeight: 800 }}>PRO</span>}
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button type="button" onClick={() => fileRef.current?.click()} title="Adjuntar archivo" style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 36, height: 36, borderRadius: 12, border: '1px solid var(--br)',
-              background: 'var(--sf)', color: 'var(--t-s)', cursor: 'pointer',
-            }}>
-              <Paperclip size={16} />
-            </button>
-            <button type="button" aria-label="Enviar mensaje a Rix" onClick={sendRixMessage} style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 40, height: 40, borderRadius: 14, border: 'none',
-              background: rixPrompt.trim() ? 'var(--p, #3b82f6)' : 'var(--br)',
-              color: '#ffffff', cursor: rixPrompt.trim() ? 'pointer' : 'default',
-            }}>
-              <Send size={17} />
-            </button>
+              <button type="button" onClick={() => fileRef.current?.click()} title="Adjuntar archivo" style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 32, height: 32, borderRadius: 10, border: '1px solid var(--br)',
+                background: 'var(--sf)', color: 'var(--t-s)', cursor: 'pointer',
+              }}>
+                <Paperclip size={15} />
+              </button>
+              <button type="button" aria-label="Enviar" onClick={sendRixMessage} style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 36, height: 36, borderRadius: 12, border: 'none',
+                background: rixPrompt.trim() || attachments.length > 0 ? 'var(--p, #3b82f6)' : 'var(--br)',
+                color: rixPrompt.trim() || attachments.length > 0 ? '#ffffff' : 'var(--t-s)',
+                cursor: rixPrompt.trim() || attachments.length > 0 ? 'pointer' : 'default',
+                transition: 'background 0.2s',
+              }}>
+                <Send size={16} />
+              </button>
             </div>
+          </div>
           </div>
           {rixSubmitStatus && <div style={{ marginTop: 10 }}><EmptyInline text={rixSubmitStatus} /></div>}
 	        </div>
