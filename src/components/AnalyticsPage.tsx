@@ -251,34 +251,34 @@ export default function AnalyticsPage() {
         ) : ChartComponents ? (
           <ChartComponents.ResponsiveContainer width="100%" height={400}>
             {selChart === 'bar' ? (
-              <ChartComponents.BarChart data={chartData}>
+              <ChartComponents.BarChart data={chartData} onClick={(e: any) => { const p = e?.activePayload?.[0]?.payload; if (p) handlePointClick(p); }} style={{ cursor: 'pointer' }}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} interval={chartData.length > 20 ? Math.floor(chartData.length / 8) : 0} />
                 <ChartComponents.YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
                 <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Bar dataKey="y" fill="var(--p)" radius={[4,4,0,0]} onClick={(e: any) => handlePointClick(e)} />
               </ChartComponents.BarChart>
             ) : selChart === 'line' ? (
-              <ChartComponents.LineChart data={chartData}>
+              <ChartComponents.LineChart data={chartData} onClick={(e: any) => { const p = e?.activePayload?.[0]?.payload; if (p) handlePointClick(p); }} style={{ cursor: 'pointer' }}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} interval={chartData.length > 20 ? Math.floor(chartData.length / 8) : 0} />
                 <ChartComponents.YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
                 <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Line type="monotone" dataKey="y" stroke="var(--p)" strokeWidth={3} dot={chartData.length <= 30} activeDot={{ onClick: (_: any, e: any) => handlePointClick(e.payload) }} />
               </ChartComponents.LineChart>
             ) : selChart === 'pie' ? (
-              <ChartComponents.PieChart>
+              <ChartComponents.PieChart onClick={(e: any) => { const p = e?.activePayload?.[0]?.payload; if (p) handlePointClick(p); }} style={{ cursor: 'pointer' }}>
                 <ChartComponents.Pie data={chartData} dataKey="y" nameKey="x" cx="50%" cy="50%" outerRadius={120} label={fmtPie} onClick={(e: any) => handlePointClick(e)}>
                   {chartData.map((_: any, i: number) => <ChartComponents.Cell key={i} fill={['var(--p)','var(--s)','#10b981','#f59e0b','#06b6d4','#8b5cf6'][i % 6]} />)}
                 </ChartComponents.Pie>
                 <ChartComponents.Tooltip formatter={fmtVal} />
               </ChartComponents.PieChart>
             ) : selChart === 'area' ? (
-              <ChartComponents.AreaChart data={chartData}>
+              <ChartComponents.AreaChart data={chartData} onClick={(e: any) => { const p = e?.activePayload?.[0]?.payload; if (p) handlePointClick(p); }} style={{ cursor: 'pointer' }}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} /><ChartComponents.YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
                 <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Area type="monotone" dataKey="y" stroke="var(--p)" fill="var(--p)" fillOpacity={0.2} onClick={(e: any) => handlePointClick(e)} />
               </ChartComponents.AreaChart>
             ) : selChart === 'scatter' ? (
-              <ChartComponents.ScatterChart>
+              <ChartComponents.ScatterChart onClick={(e: any) => { const p = e?.activePayload?.[0]?.payload; if (p) handlePointClick(p); }} style={{ cursor: 'pointer' }}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} tickFormatter={fmt} />
                 <ChartComponents.YAxis dataKey="y" tick={{ fontSize: 11, fill: 'var(--t-s)' }} tickFormatter={fmt} />
