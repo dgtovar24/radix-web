@@ -1445,12 +1445,18 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
     return { thinking: '', response: text };
   };
 
-  // Hardcoded history for display
-  const chats = [
-    { id: 'turno', title: 'Resumen del turno', meta: 'Hoy', excerpt: 'Alertas pendientes y pacientes con revisión activa.' },
-    { id: 'dosis', title: 'Dudas de dosimetría', meta: 'Ayer', excerpt: 'Cálculo de actividad y recomendaciones por tratamiento.' },
-    { id: 'seguimiento', title: 'Seguimiento post-terapia', meta: 'Lun', excerpt: 'Síntomas reportados y próximos controles.' },
-  ];
+  // Conversation history from localStorage
+  const [savedChats, setSavedChats] = useState<Array<{id: string; title: string; meta: string; excerpt: string; model: string; msgs: Array<{role:string;text:string;thinking?:string;time:string}>}>>([]);
+
+  // Load saved chats on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('rix-chats');
+      if (raw) setSavedChats(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const chats = savedChats;
 
   const selectedDoctorSummary = selectedDoctors.length
     ? doctors.filter((d) => selectedDoctors.includes(d.id)).map((d) => d.name).join(', ')
@@ -1516,6 +1522,25 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
   const sendRixMessage = () => {
     const text = rixPrompt.trim();
     if (!text && attachments.length === 0) return;
+
+    // Save previous conversation before starting new one
+    if (rixMsgs.length > 0 && proMode) {
+      const prevMsgs = rixMsgs;
+      const firstUserMsg = prevMsgs.find(m => m.role === 'user')?.text?.slice(0, 50) || 'Conversación';
+      const lastAIMsg = prevMsgs.filter(m => m.role === 'assistant').pop()?.text?.slice(0, 80) || '';
+      const chat = {
+        id: Date.now().toString(),
+        title: firstUserMsg,
+        meta: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+        excerpt: lastAIMsg,
+        model: proMode ? 'deepseek-v4-pro' : 'deepseek-v4-flash',
+        msgs: prevMsgs,
+      };
+      const updated = [chat, ...savedChats.filter(c => c.title !== firstUserMsg)].slice(0, 20);
+      setSavedChats(updated);
+      try { localStorage.setItem('rix-chats', JSON.stringify(updated)); } catch {}
+      setActiveRixChat(chat.id);
+    }
     setIsRixConversationOpen(true);
     setShowHistoryPanel(false);
     setShowGroupsPanel(false);
@@ -1812,7 +1837,14 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                     <button
                       key={chat.id}
                       type="button"
-                      onClick={() => setActiveRixChat(chat.id)}
+                      onClick={() => {
+                        setActiveRixChat(chat.id);
+                        if (chat.msgs?.length) {
+                          setRixMsgs(chat.msgs);
+                          setIsRixConversationOpen(true);
+                          setShowHistoryPanel(false);
+                        }
+                      }}
                       style={{
                         width: '100%',
                         textAlign: 'left',
