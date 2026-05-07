@@ -1391,7 +1391,7 @@ function renderMarkdown(text: string): string {
 }
 
 function ThinkingBubble({ text }: { text: string }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   if (!text) return null;
   return (
     <div style={{ maxWidth: '85%', marginBottom: 4 }}>
