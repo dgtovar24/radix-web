@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart3, TrendingUp, PieChart, AreaChart, Target, ScatterChart, X, FlaskConical, Activity, Save, Trash2, Play } from 'lucide-react';
+import { BarChart3, TrendingUp, PieChart, AreaChart, Target, ScatterChart, X, FlaskConical, Activity, Save, Trash2, Play, Sparkles, Loader2 } from 'lucide-react';
 
 const API = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? 'http://localhost:8080/v2'
@@ -36,6 +36,10 @@ export default function AnalyticsPage() {
   const [savedCharts, setSavedCharts] = useState<SavedChart[]>([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState('');
+  const [rixQuery, setRixQuery] = useState('');
+  const [rixLoading, setRixLoading] = useState(false);
+  const [rixError, setRixError] = useState('');
+  const [rixTitle, setRixTitle] = useState('');
 
   useEffect(() => {
     fetch(`${API}/api/analytics/schema`).then(r => r.json()).then(d => {
@@ -96,6 +100,47 @@ export default function AnalyticsPage() {
 
   const generate = () => { if (selTable && selX && selY) generateWith(selTable, selX, selY); };
 
+  const rixSubmit = async () => {
+    if (!rixQuery.trim() || rixLoading) return;
+    setRixLoading(true);
+    setRixError('');
+    setRixTitle('');
+    try {
+      const r = await fetch(`${API}/api/analytics/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: rixQuery.trim() }),
+      });
+      const d = await r.json();
+      if (d.error) { setRixError(d.error); return; }
+
+      const cols = d.columns || [];
+      const rows = (d.data || []) as any[];
+
+      if (cols.length === 0 || rows.length === 0) {
+        setRixError('La consulta no devolvió datos.');
+        return;
+      }
+
+      setRixTitle(d.title || rixQuery);
+      const mapped = rows.map(row => {
+        const pt: any = {};
+        if (cols.length >= 1) pt.x = row[cols[0]];
+        if (cols.length >= 2) pt.y = row[cols[1]];
+        Object.entries(row).forEach(([k, v]) => { if (!pt.hasOwnProperty(k)) pt[k] = v; });
+        return pt;
+      });
+
+      setChartData(mapped);
+      setSelTable('');
+      setSelX(cols[0] || '');
+      setSelY(cols[1] || '');
+      setSelChart('bar');
+    } catch {
+      setRixError('Error de conexión.');
+    } finally { setRixLoading(false); }
+  };
+
   const handlePointClick = (point: any) => {
     const pid = point?.fk_patient_id || point?.id;
     if (pid) fetch(`${API}/api/analytics/patient/${pid}/full`).then(r => r.json()).then(setModal);
@@ -103,8 +148,40 @@ export default function AnalyticsPage() {
 
   return (
     <div style={{ display: 'flex', gap: 20, fontFamily: "'Inter', sans-serif", minHeight: 'calc(100vh - 200px)' }}>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* LEFT PANEL */}
       <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Rix AI Query */}
+        <div style={{ padding: 16, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)' }}>
+          <h3 style={{ ...sH, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Sparkles size={14} style={{ color: 'var(--p)' }} />
+            Pregúntale a Rix
+          </h3>
+          <textarea
+            value={rixQuery}
+            onChange={e => setRixQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); rixSubmit(); } }}
+            placeholder="Ej: muéstrame la radiación promedio por paciente..."
+            rows={3}
+            style={{
+              width: '100%', padding: '10px', borderRadius: 10, border: '1px solid var(--br)',
+              background: 'var(--b)', color: 'var(--t)', fontSize: 12, resize: 'vertical',
+              outline: 'none', fontFamily: "'Inter', sans-serif", lineHeight: 1.5,
+            }}
+          />
+          <button onClick={rixSubmit} disabled={rixLoading || !rixQuery.trim()} style={{
+            width: '100%', marginTop: 10, padding: '10px', borderRadius: 10, border: 'none',
+            background: rixLoading || !rixQuery.trim() ? 'var(--br)' : 'var(--p)',
+            color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            {rixLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
+            {rixLoading ? 'Consultando...' : 'Consultar a Rix'}
+          </button>
+          {rixError && <div style={{ marginTop: 8, fontSize: 11, color: '#ef4444', lineHeight: 1.4 }}>{rixError}</div>}
+          {rixTitle && <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: 'var(--p)' }}>{rixTitle}</div>}
+        </div>
+
         <div style={{ padding: 16, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)' }}>
           <h3 style={sH}>Datos</h3>
           <label style={lbl}>Tabla</label>
