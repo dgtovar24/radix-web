@@ -111,46 +111,24 @@ export default function AnalyticsPage() {
       });
       const d = await r.json();
       if (d.error) { setRixError(d.error); return; }
-
-      const cols = d.columns || [];
-      const rows = (d.data || []) as any[];
-
-      if (cols.length === 0 || rows.length === 0) {
-        setRixError('La consulta no devolvió datos.');
+      if (!d.table || !d.xColumn || !d.yColumn) {
+        setRixError('No se pudieron determinar los parámetros del gráfico.');
         return;
       }
 
-      const colSet = new Set(cols.map((c: string) => c.toLowerCase()));
-      let bestTable = '';
-      let bestScore = 0;
-      for (const t of tables) {
-        const tCols = new Set(t.columns.map((c: any) => c.key.toLowerCase()));
-        const intersect = [...colSet].filter(c => tCols.has(c)).length;
-        if (intersect > bestScore) { bestScore = intersect; bestTable = t.id; }
+      setSelTable(d.table);
+      setSelX(d.xColumn);
+      setSelY(d.yColumn);
+      setSelChart(d.chartType || 'bar');
+      if (d.table2 && d.joinField) {
+        setUseTwoTables(true);
+        setSelTable2(d.table2);
+        setJoinField(d.joinField);
+      } else {
+        setUseTwoTables(false);
       }
 
-      const mapped = rows.map(row => {
-        const pt: any = {};
-        if (cols.length >= 1) pt.x = row[cols[0]];
-        if (cols.length >= 2) pt.y = row[cols[1]];
-        Object.entries(row).forEach(([k, v]) => { if (!pt.hasOwnProperty(k)) pt[k] = v; });
-        return pt;
-      });
-
-      const xCol = cols[0] || '';
-      const yCol = cols[1] || '';
-      const isNumeric = (typeof mapped[0]?.y === 'number');
-      const uniqueX = new Set(mapped.map((r: any) => r.x)).size;
-      let chartType = 'bar';
-      if (uniqueX === mapped.length && isNumeric) chartType = 'line';
-      if (mapped.length <= 10 && isNumeric) chartType = 'pie';
-
-      setSelTable(bestTable);
-      setSelX(xCol);
-      setSelY(yCol);
-      setSelChart(chartType);
-      setChartData(mapped);
-      setUseTwoTables(false);
+      setTimeout(() => generateWith(d.table, d.xColumn, d.yColumn), 100);
     } catch {
       setRixError('Error de conexión.');
     } finally { setRixLoading(false); }
