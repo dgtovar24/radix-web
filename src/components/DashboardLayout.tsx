@@ -2003,22 +2003,39 @@ function RixPanel({ expanded, isMobile }: { expanded: boolean; isMobile: boolean
                 const isUser = m.role === 'user';
                 return (
                 <div key={i} style={{
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: isUser ? 'flex-end' : 'flex-start',
+                  display: 'flex', flexDirection: 'row',
+                  alignItems: 'flex-start', gap: 10,
+                  justifyContent: isUser ? 'flex-end' : 'flex-start',
                 }}>
-                  {m.thinking && <ThinkingBubble text={m.thinking} />}
-                  <div style={{
-                    maxWidth: '85%', padding: isUser ? '10px 14px' : '14px 18px',
-                    borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    background: isUser ? 'var(--p, #6d32e8)' : 'var(--sf, #ffffff)',
-                    border: isUser ? 'none' : '1px solid var(--br, #e5e7eb)',
-                    boxShadow: isUser ? 'none' : '0 1px 3px rgba(0,0,0,0.04)',
-                    color: isUser ? '#ffffff' : 'var(--t, #111827)',
-                    fontSize: 13, lineHeight: 1.55,
-                    whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  }} dangerouslySetInnerHTML={isUser ? undefined : { __html: renderMarkdown(m.text) }}>
-                    {isUser ? m.text : null}
+                  {/* Bot avatar */}
+                  {!isUser && (
+                    <img src="/rix-saludando.png" alt="Rix"
+                      style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: 2 }} />
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '75%' }}>
+                    {m.thinking && <ThinkingBubble text={m.thinking} />}
+                    <div style={{
+                      padding: isUser ? '10px 14px' : '14px 18px',
+                      borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                      background: isUser ? 'var(--p, #6d32e8)' : 'var(--sf, #ffffff)',
+                      border: isUser ? 'none' : '1px solid var(--br, #e5e7eb)',
+                      boxShadow: isUser ? 'none' : '0 1px 3px rgba(0,0,0,0.04)',
+                      color: isUser ? '#ffffff' : 'var(--t, #111827)',
+                      fontSize: 13, lineHeight: 1.55,
+                      whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                    }} dangerouslySetInnerHTML={isUser ? undefined : { __html: renderMarkdown(m.text) }}>
+                      {isUser ? m.text : null}
+                    </div>
                   </div>
+                  {/* User avatar */}
+                  {isUser && (
+                    <div style={{
+                      width: 30, height: 30, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                      background: 'var(--p, #6d32e8)', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700,
+                    }}>Tú</div>
+                  )}
                 </div>
                 );
               })}
