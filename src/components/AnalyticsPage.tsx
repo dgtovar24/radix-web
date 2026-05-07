@@ -81,14 +81,12 @@ export default function AnalyticsPage() {
 
   const columns = tables.find(t => t.id === selTable)?.columns || [];
 
-  const generateWith = async (table: string, xCol: string, yCol: string, twoTables = false, table2 = '', join = '') => {
+  const generateWith = async (table: string, xCol: string, yCol: string, twoTables = false, table2 = '', join = '', sort = '') => {
     setLoading(true);
     try {
       const body: any = { table, xColumn: xCol, yColumn: yCol, limit: 200 };
-      if (twoTables && table2 && join) {
-        body.table2 = table2;
-        body.joinField = join;
-      }
+      if (twoTables && table2 && join) { body.table2 = table2; body.joinField = join; }
+      if (sort) body.sortOrder = sort;
       const r = await fetch(`${API}/api/analytics/data`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -98,7 +96,7 @@ export default function AnalyticsPage() {
     } catch {} finally { setLoading(false); }
   };
 
-  const generate = () => { if (selTable && selX && selY) generateWith(selTable, selX, selY, useTwoTables, selTable2, joinField); };
+  const generate = () => { if (selTable && selX && selY) generateWith(selTable, selX, selY, useTwoTables, selTable2, joinField, sortOrder); };
 
   const rixSubmit = async () => {
     if (!rixQuery.trim() || rixLoading) return;
@@ -121,6 +119,8 @@ export default function AnalyticsPage() {
       setSelX(d.xColumn);
       setSelY(d.yColumn);
       setSelChart(d.chartType || 'bar');
+      const sort = d.sortOrder || '';
+      setSortOrder(sort);
       const hasTwo = !!(d.table2 && d.joinField);
       if (hasTwo) {
         setUseTwoTables(true);
@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
         setUseTwoTables(false);
       }
 
-      generateWith(d.table, d.xColumn, d.yColumn, hasTwo, d.table2 || '', d.joinField || '');
+      generateWith(d.table, d.xColumn, d.yColumn, hasTwo, d.table2 || '', d.joinField || '', sort);
     } catch {
       setRixError('Error de conexión.');
     } finally { setRixLoading(false); }
@@ -183,6 +183,15 @@ export default function AnalyticsPage() {
               </select>
             </>
           )}
+
+          <label style={{ ...lbl, marginTop: 10 }}>Ordenar</label>
+          <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} style={sel}>
+            <option value="">Sin ordenar</option>
+            <option value="x-asc">X Ascendente (A-Z / menor a mayor)</option>
+            <option value="x-desc">X Descendente (Z-A / mayor a menor)</option>
+            <option value="y-asc">Y Ascendente</option>
+            <option value="y-desc">Y Descendente</option>
+          </select>
 
           <button onClick={generate} disabled={!selX || !selY || loading} style={{
             width: '100%', marginTop: 14, padding: '10px', borderRadius: 10, border: 'none',
