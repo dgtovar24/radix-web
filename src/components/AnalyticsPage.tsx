@@ -151,37 +151,6 @@ export default function AnalyticsPage() {
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       {/* LEFT PANEL */}
       <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Rix AI Query */}
-        <div style={{ padding: 16, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)' }}>
-          <h3 style={{ ...sH, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Sparkles size={14} style={{ color: 'var(--p)' }} />
-            Pregúntale a Rix
-          </h3>
-          <textarea
-            value={rixQuery}
-            onChange={e => setRixQuery(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); rixSubmit(); } }}
-            placeholder="Ej: muéstrame la radiación promedio por paciente..."
-            rows={3}
-            style={{
-              width: '100%', padding: '10px', borderRadius: 10, border: '1px solid var(--br)',
-              background: 'var(--b)', color: 'var(--t)', fontSize: 12, resize: 'vertical',
-              outline: 'none', fontFamily: "'Inter', sans-serif", lineHeight: 1.5,
-            }}
-          />
-          <button onClick={rixSubmit} disabled={rixLoading || !rixQuery.trim()} style={{
-            width: '100%', marginTop: 10, padding: '10px', borderRadius: 10, border: 'none',
-            background: rixLoading || !rixQuery.trim() ? 'var(--br)' : 'var(--p)',
-            color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>
-            {rixLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
-            {rixLoading ? 'Consultando...' : 'Consultar a Rix'}
-          </button>
-          {rixError && <div style={{ marginTop: 8, fontSize: 11, color: '#ef4444', lineHeight: 1.4 }}>{rixError}</div>}
-          {rixTitle && <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: 'var(--p)' }}>{rixTitle}</div>}
-        </div>
-
         <div style={{ padding: 16, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)' }}>
           <h3 style={sH}>Datos</h3>
           <label style={lbl}>Tabla</label>
@@ -257,8 +226,9 @@ export default function AnalyticsPage() {
       </div>
 
       {/* CHART AREA */}
-      <div style={{ flex: 1, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)', padding: 20, minHeight: 400 }}>
-        {chartData.length === 0 ? (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ flex: 1, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)', padding: 20, minHeight: 400 }}>
+          {chartData.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--t-s)', gap: 12 }}>
             <BarChart3 size={40} style={{ opacity: 0.3 }} />
             <div style={{ fontSize: 14, fontWeight: 600 }}>Selecciona tabla, columnas y genera un gráfico</div>
@@ -313,6 +283,46 @@ export default function AnalyticsPage() {
             </div>
           </>
         )}
+      </div>
+
+      {/* Rix AI Query — below chart */}
+      <div style={{ padding: 16, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)' }}>
+        <h3 style={{ ...sH, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Sparkles size={14} style={{ color: 'var(--p)' }} />
+          Pregúntale a Rix
+        </h3>
+        <textarea
+          value={rixQuery}
+          onChange={e => setRixQuery(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); rixSubmit(); } }}
+          placeholder="Ej: muéstrame la radiación promedio por paciente..."
+          rows={3}
+          style={{
+            width: '100%', padding: '10px', borderRadius: 10, border: '1px solid var(--br)',
+            background: 'var(--b)', color: 'var(--t)', fontSize: 12, resize: 'vertical',
+            outline: 'none', fontFamily: "'Inter', sans-serif", lineHeight: 1.5,
+          }}
+        />
+        <button onClick={rixSubmit} disabled={rixLoading || !rixQuery.trim()} style={{
+          width: '100%', marginTop: 10, padding: '10px', borderRadius: 10, border: 'none',
+          background: rixLoading || !rixQuery.trim() ? 'var(--br)' : 'var(--p)',
+          color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+          {rixLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
+          {rixLoading ? 'Consultando...' : 'Consultar a Rix'}
+        </button>
+        {rixError && (
+          <div style={{ marginTop: 8, fontSize: 11, lineHeight: 1.4 }}>
+            {rixError === 'Rix no configurado' ? (
+              <span>Rix no configurado — <a href="/configuracion" style={{ color: 'var(--p)', textDecoration: 'underline', fontWeight: 700 }}>configurar API Key</a></span>
+            ) : (
+              <span style={{ color: '#ef4444' }}>{rixError}</span>
+            )}
+          </div>
+        )}
+        {rixTitle && <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: 'var(--p)' }}>{rixTitle}</div>}
+      </div>
       </div>
 
       {/* PORTAL: Patient Detail Modal */}
