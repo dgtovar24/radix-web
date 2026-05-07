@@ -70,7 +70,7 @@ export default function AnalyticsPage() {
     setSelChart(c.chartType);
     if (c.table2 && c.joinField) { setUseTwoTables(true); setSelTable2(c.table2); setJoinField(c.joinField); }
     else setUseTwoTables(false);
-    setTimeout(() => generateWith(c.table, c.xColumn, c.yColumn), 100);
+    generateWith(c.table, c.xColumn, c.yColumn, !!(c.table2 && c.joinField), c.table2 || '', c.joinField || '');
   };
 
   const deleteChart = (id: string) => {
@@ -80,13 +80,13 @@ export default function AnalyticsPage() {
 
   const columns = tables.find(t => t.id === selTable)?.columns || [];
 
-  const generateWith = async (table: string, xCol: string, yCol: string) => {
+  const generateWith = async (table: string, xCol: string, yCol: string, twoTables = false, table2 = '', join = '') => {
     setLoading(true);
     try {
       const body: any = { table, xColumn: xCol, yColumn: yCol, limit: 200 };
-      if (useTwoTables && selTable2 && joinField) {
-        body.table2 = selTable2;
-        body.joinField = joinField;
+      if (twoTables && table2 && join) {
+        body.table2 = table2;
+        body.joinField = join;
       }
       const r = await fetch(`${API}/api/analytics/data`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -97,7 +97,7 @@ export default function AnalyticsPage() {
     } catch {} finally { setLoading(false); }
   };
 
-  const generate = () => { if (selTable && selX && selY) generateWith(selTable, selX, selY); };
+  const generate = () => { if (selTable && selX && selY) generateWith(selTable, selX, selY, useTwoTables, selTable2, joinField); };
 
   const rixSubmit = async () => {
     if (!rixQuery.trim() || rixLoading) return;
@@ -120,7 +120,8 @@ export default function AnalyticsPage() {
       setSelX(d.xColumn);
       setSelY(d.yColumn);
       setSelChart(d.chartType || 'bar');
-      if (d.table2 && d.joinField) {
+      const hasTwo = !!(d.table2 && d.joinField);
+      if (hasTwo) {
         setUseTwoTables(true);
         setSelTable2(d.table2);
         setJoinField(d.joinField);
@@ -128,7 +129,7 @@ export default function AnalyticsPage() {
         setUseTwoTables(false);
       }
 
-      setTimeout(() => generateWith(d.table, d.xColumn, d.yColumn), 100);
+      generateWith(d.table, d.xColumn, d.yColumn, hasTwo, d.table2 || '', d.joinField || '');
     } catch {
       setRixError('Error de conexión.');
     } finally { setRixLoading(false); }
