@@ -39,7 +39,6 @@ export default function AnalyticsPage() {
   const [rixQuery, setRixQuery] = useState('');
   const [rixLoading, setRixLoading] = useState(false);
   const [rixError, setRixError] = useState('');
-  const [rixTitle, setRixTitle] = useState('');
 
   useEffect(() => {
     fetch(`${API}/api/analytics/schema`).then(r => r.json()).then(d => {
@@ -104,7 +103,6 @@ export default function AnalyticsPage() {
     if (!rixQuery.trim() || rixLoading) return;
     setRixLoading(true);
     setRixError('');
-    setRixTitle('');
     try {
       const r = await fetch(`${API}/api/analytics/query`, {
         method: 'POST',
@@ -122,7 +120,15 @@ export default function AnalyticsPage() {
         return;
       }
 
-      setRixTitle(d.title || rixQuery);
+      const colSet = new Set(cols.map((c: string) => c.toLowerCase()));
+      let bestTable = '';
+      let bestScore = 0;
+      for (const t of tables) {
+        const tCols = new Set(t.columns.map((c: any) => c.key.toLowerCase()));
+        const intersect = [...colSet].filter(c => tCols.has(c)).length;
+        if (intersect > bestScore) { bestScore = intersect; bestTable = t.id; }
+      }
+
       const mapped = rows.map(row => {
         const pt: any = {};
         if (cols.length >= 1) pt.x = row[cols[0]];
@@ -131,11 +137,20 @@ export default function AnalyticsPage() {
         return pt;
       });
 
+      const xCol = cols[0] || '';
+      const yCol = cols[1] || '';
+      const isNumeric = (typeof mapped[0]?.y === 'number');
+      const uniqueX = new Set(mapped.map((r: any) => r.x)).size;
+      let chartType = 'bar';
+      if (uniqueX === mapped.length && isNumeric) chartType = 'line';
+      if (mapped.length <= 10 && isNumeric) chartType = 'pie';
+
+      setSelTable(bestTable);
+      setSelX(xCol);
+      setSelY(yCol);
+      setSelChart(chartType);
       setChartData(mapped);
-      setSelTable('');
-      setSelX(cols[0] || '');
-      setSelY(cols[1] || '');
-      setSelChart('bar');
+      setUseTwoTables(false);
     } catch {
       setRixError('Error de conexión.');
     } finally { setRixLoading(false); }
@@ -328,7 +343,6 @@ export default function AnalyticsPage() {
             <span style={{ color: '#ef4444' }}>{rixError}</span>
           </div>
         )}
-        {rixTitle && <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: 'var(--p)' }}>{rixTitle}</div>}
       </div>
       </div>
 
