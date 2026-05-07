@@ -258,7 +258,7 @@ export default function AnalyticsPage() {
                 <ChartComponents.Tooltip />
               </ChartComponents.PieChart>
             ) : selChart === 'area' ? (
-              <ChartComponents.AreaChart data={chartData}>
+              <ChartComponents.AreaChart data={chartData} onClick={(e: any) => e?.activePayload?.[0] && handlePointClick(e.activePayload[0].payload)}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} /><ChartComponents.YAxis tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
                 <ChartComponents.Tooltip /><ChartComponents.Area type="monotone" dataKey="y" stroke="var(--p)" fill="var(--p)" fillOpacity={0.2} />

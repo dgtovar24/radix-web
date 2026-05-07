@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTheme } from '../ThemeProvider';
+import { patients, smartwatches, treatments } from '../../services/api';
 import { 
-  User, Watch, ActivitySquare, CheckCircle, ChevronRight, ChevronLeft, Save, Shield
+  User, Watch, ActivitySquare, CheckCircle, ChevronRight, ChevronLeft, Save, Shield, Copy, RefreshCw, Sparkles, Loader2
 } from 'lucide-react';
 
 interface WizardData {
@@ -26,6 +27,9 @@ export default function PatientRegistrationWizard() {
   const { palette } = useTheme();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [pairingCode, setPairingCode] = useState('');
+  const [selectedIsotopeId, setSelectedIsotopeId] = useState('');
   const [data, setData] = useState<WizardData>({
     fullName: '', phone: '', address: '', familyAccessCode: '',
     imei: '', macAddress: '', model: '',
@@ -36,12 +40,49 @@ export default function PatientRegistrationWizard() {
     setData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      window.location.href = '/pacientes';
-    }, 1500);
+    setSubmitError('');
+    try {
+      const patientRes = await patients.register({
+        fullName: data.fullName,
+        phone: data.phone,
+        address: data.address,
+        familyAccessCode: data.familyAccessCode,
+      });
+      const patientId = (patientRes as any)?.patientId || (patientRes as any)?.id;
+
+      if (data.imei) {
+        const watchRes = await smartwatches.create({
+          fkPatientId: patientId,
+          imei: data.imei,
+          macAddress: data.macAddress,
+          model: data.model || 'RadixWatch Pro v2',
+        });
+        if ((watchRes as any).pairingCode) {
+          setPairingCode((watchRes as any).pairingCode);
+        }
+      }
+
+      if (data.radioisotope) {
+        const isotopeId = parseInt(data.radioisotope) || 1;
+        await treatments.create({
+          fkPatientId: patientId,
+          fkRadioisotopeId: isotopeId,
+          room: parseInt(data.room) || 0,
+          initialDose: parseFloat(data.initialDose) || 0,
+          safetyThreshold: 5.0,
+          isolationDays: parseInt(data.isolationDays) || 5,
+          startDate: data.startDate ? `${data.startDate}T00:00:00` : new Date().toISOString(),
+        });
+      }
+
+      setStep(5);
+    } catch (err: any) {
+      setSubmitError(err.message || 'Error al registrar. Revisa los datos.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputStyle = {
@@ -170,10 +211,10 @@ export default function PatientRegistrationWizard() {
                 <label style={labelStyle}>Radioisótopo *</label>
                 <select value={data.radioisotope} onChange={e => handleChange('radioisotope', e.target.value)} style={inputStyle}>
                   <option value="">Selecciona isótopo...</option>
-                  <option value="I-131">Yodo-131 (I-131)</option>
-                  <option value="Tc-99m">Tecnecio-99m (Tc-99m)</option>
-                  <option value="Y-90">Itrio-90 (Y-90)</option>
-                  <option value="Lu-177">Lutecio-177 (Lu-177)</option>
+                  <option value="1">Yodo-131 (I-131)</option>
+                  <option value="2">Tecnecio-99m (Tc-99m)</option>
+                  <option value="3">Itrio-90 (Y-90)</option>
+                  <option value="4">Lutecio-177 (Lu-177)</option>
                 </select>
               </div>
               <div>
@@ -235,9 +276,75 @@ export default function PatientRegistrationWizard() {
           </div>
         )}
 
+        {step === 5 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, padding: '20px 0' }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircle size={36} color="#fff" strokeWidth={2.5} />
+            </div>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--t, #111827)', textAlign: 'center', margin: 0 }}>Paciente Registrado con Éxito</h2>
+
+            {pairingCode && (
+              <div style={{ background: 'var(--b, #f9fafb)', padding: 32, borderRadius: 16, border: '2px solid var(--p)', textAlign: 'center', width: '100%', maxWidth: 400 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16 }}>
+                  <Sparkles size={18} style={{ color: 'var(--p)' }} />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--p)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Código de Emparejamiento</span>
+                </div>
+                <div style={{ 
+                  fontSize: 48, fontWeight: 800, color: 'var(--t, #111827)', 
+                  letterSpacing: '0.15em', fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                  background: 'var(--sf, #fff)', padding: '16px 24px', borderRadius: 12,
+                  border: '1px solid var(--br, #e5e7eb)', marginBottom: 12,
+                }}>
+                  {pairingCode}
+                </div>
+                <p style={{ fontSize: 13, color: 'var(--t-s, #6b7280)', marginBottom: 12, lineHeight: 1.5 }}>
+                  Entrega este código al paciente. Lo introducirá en el reloj RADIX al encenderlo por primera vez.
+                </p>
+                <button
+                  onClick={() => navigator.clipboard.writeText(pairingCode)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '8px 16px', borderRadius: 8, border: '1px solid var(--br, #e5e7eb)',
+                    background: 'var(--sf, #fff)', color: 'var(--t, #111827)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  <Copy size={14} /> Copiar Código
+                </button>
+              </div>
+            )}
+
+            {!pairingCode && (
+              <div style={{ background: '#fffbeb', padding: 20, borderRadius: 12, border: '1px solid #fcd34d', textAlign: 'center', maxWidth: 400 }}>
+                <p style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5, margin: 0 }}>
+                  El paciente se registró sin smartwatch. Puedes vincular un dispositivo más tarde desde la ficha del paciente.
+                </p>
+              </div>
+            )}
+
+            {submitError && (
+              <div style={{ background: '#fef2f2', padding: 16, borderRadius: 12, border: '1px solid #fecaca', textAlign: 'center', maxWidth: 400 }}>
+                <p style={{ fontSize: 13, color: '#dc2626', margin: 0 }}>{submitError}</p>
+              </div>
+            )}
+
+            <button
+              onClick={() => { window.location.href = '/pacientes'; }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '12px 32px', borderRadius: 10,
+                background: 'var(--p)', border: 'none',
+                color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              Ir a Pacientes
+            </button>
+          </div>
+        )}
+
       </div>
 
       {/* Footer Navigation */}
+      {step < 5 && (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 32 }}>
         <button
           onClick={() => step > 1 ? setStep(step - 1) : window.history.back()}
@@ -283,6 +390,7 @@ export default function PatientRegistrationWizard() {
           </button>
         )}
       </div>
+      )}
 
     </div>
   );

@@ -277,6 +277,7 @@ export interface Treatment {
 export interface SmartwatchResponse {
   id: number; imei: string; macAddress: string; model: string; isActive: boolean;
   patientId: number; patientName?: string;
+  pairingCode?: string; pairingCodeUsed?: boolean; pairedAt?: string;
 }
 
 export interface WatchMetrics {
