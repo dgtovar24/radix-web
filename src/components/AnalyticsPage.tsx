@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart3, TrendingUp, PieChart, AreaChart, Target, ScatterChart, X, FlaskConical, Activity, Save, Trash2, Play, Sparkles, Loader2 } from 'lucide-react';
+import { BarChart3, TrendingUp, PieChart, AreaChart, Target, ScatterChart, X, FlaskConical, Activity, Save, Trash2, Play, Sparkles, Loader2, SendHorizontal } from 'lucide-react';
 
 const API = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? 'http://localhost:8080/v2'
@@ -148,7 +148,13 @@ export default function AnalyticsPage() {
 
   return (
     <div style={{ display: 'flex', gap: 20, fontFamily: "'Inter', sans-serif", minHeight: 'calc(100vh - 200px)' }}>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .rix-scroll::-webkit-scrollbar { width: 5px; }
+        .rix-scroll::-webkit-scrollbar-track { background: transparent; }
+        .rix-scroll::-webkit-scrollbar-thumb { background: var(--br); border-radius: 10px; }
+        .rix-scroll::-webkit-scrollbar-thumb:hover { background: var(--t-s); }
+      `}</style>
       {/* LEFT PANEL */}
       <div style={{ width: 260, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ padding: 16, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)' }}>
@@ -287,38 +293,39 @@ export default function AnalyticsPage() {
 
       {/* Rix AI Query — below chart */}
       <div style={{ padding: 16, background: 'var(--sf)', borderRadius: 14, border: '1px solid var(--br)' }}>
-        <h3 style={{ ...sH, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <h3 style={{ ...sH, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
           <Sparkles size={14} style={{ color: 'var(--p)' }} />
           Pregúntale a Rix
         </h3>
-        <textarea
-          value={rixQuery}
-          onChange={e => setRixQuery(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); rixSubmit(); } }}
-          placeholder="Ej: muéstrame la radiación promedio por paciente..."
-          rows={3}
-          style={{
-            width: '100%', padding: '10px', borderRadius: 10, border: '1px solid var(--br)',
-            background: 'var(--b)', color: 'var(--t)', fontSize: 12, resize: 'vertical',
-            outline: 'none', fontFamily: "'Inter', sans-serif", lineHeight: 1.5,
-          }}
-        />
-        <button onClick={rixSubmit} disabled={rixLoading || !rixQuery.trim()} style={{
-          width: '100%', marginTop: 10, padding: '10px', borderRadius: 10, border: 'none',
-          background: rixLoading || !rixQuery.trim() ? 'var(--br)' : 'var(--p)',
-          color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}>
-          {rixLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
-          {rixLoading ? 'Consultando...' : 'Consultar a Rix'}
-        </button>
+        <div style={{ position: 'relative' }}>
+          <textarea
+            value={rixQuery}
+            onChange={e => setRixQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); rixSubmit(); } }}
+            placeholder="Ej: muéstrame la radiación promedio por paciente..."
+            rows={5}
+            className="rix-scroll"
+            style={{
+              width: '100%', padding: '12px 44px 12px 12px', borderRadius: 12, border: '1px solid var(--br)',
+              background: 'var(--b)', color: 'var(--t)', fontSize: 12, resize: 'none',
+              outline: 'none', fontFamily: "'Inter', sans-serif", lineHeight: 1.5,
+              maxHeight: 150, overflowY: 'auto',
+            }}
+          />
+          <button onClick={rixSubmit} disabled={rixLoading || !rixQuery.trim()} style={{
+            position: 'absolute', bottom: 10, right: 10,
+            width: 34, height: 34, borderRadius: 10, border: 'none',
+            background: rixLoading || !rixQuery.trim() ? 'var(--br)' : 'var(--p)',
+            color: '#fff', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'background 0.15s',
+          }} title="Enviar">
+            {rixLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <SendHorizontal size={16} />}
+          </button>
+        </div>
         {rixError && (
           <div style={{ marginTop: 8, fontSize: 11, lineHeight: 1.4 }}>
-            {rixError === 'Rix no configurado' ? (
-              <span>Rix no configurado — <a href="/configuracion" style={{ color: 'var(--p)', textDecoration: 'underline', fontWeight: 700 }}>configurar API Key</a></span>
-            ) : (
-              <span style={{ color: '#ef4444' }}>{rixError}</span>
-            )}
+            <span style={{ color: '#ef4444' }}>{rixError}</span>
           </div>
         )}
         {rixTitle && <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: 'var(--p)' }}>{rixTitle}</div>}
