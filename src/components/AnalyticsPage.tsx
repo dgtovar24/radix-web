@@ -251,18 +251,18 @@ export default function AnalyticsPage() {
         ) : ChartComponents ? (
           <ChartComponents.ResponsiveContainer width="100%" height={400}>
             {selChart === 'bar' ? (
-              <ChartComponents.BarChart data={chartData} onClick={(e: any) => e?.activePayload?.[0] && handlePointClick(e.activePayload[0].payload)}>
+              <ChartComponents.BarChart data={chartData}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} interval={chartData.length > 20 ? Math.floor(chartData.length / 8) : 0} />
                 <ChartComponents.YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
-                <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Bar dataKey="y" fill="var(--p)" radius={[4,4,0,0]} />
+                <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Bar dataKey="y" fill="var(--p)" radius={[4,4,0,0]} onClick={(e: any) => handlePointClick(e)} />
               </ChartComponents.BarChart>
             ) : selChart === 'line' ? (
-              <ChartComponents.LineChart data={chartData} onClick={(e: any) => e?.activePayload?.[0] && handlePointClick(e.activePayload[0].payload)}>
+              <ChartComponents.LineChart data={chartData}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} interval={chartData.length > 20 ? Math.floor(chartData.length / 8) : 0} />
                 <ChartComponents.YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
-                <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Line type="monotone" dataKey="y" stroke="var(--p)" strokeWidth={3} dot={chartData.length <= 30} />
+                <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Line type="monotone" dataKey="y" stroke="var(--p)" strokeWidth={3} dot={chartData.length <= 30} activeDot={{ onClick: (_: any, e: any) => handlePointClick(e.payload) }} />
               </ChartComponents.LineChart>
             ) : selChart === 'pie' ? (
               <ChartComponents.PieChart>
@@ -272,10 +272,10 @@ export default function AnalyticsPage() {
                 <ChartComponents.Tooltip formatter={fmtVal} />
               </ChartComponents.PieChart>
             ) : selChart === 'area' ? (
-              <ChartComponents.AreaChart data={chartData} onClick={(e: any) => e?.activePayload?.[0] && handlePointClick(e.activePayload[0].payload)}>
+              <ChartComponents.AreaChart data={chartData}>
                 <ChartComponents.CartesianGrid strokeDasharray="3 3" stroke="var(--br)" />
                 <ChartComponents.XAxis dataKey="x" tick={{ fontSize: 11, fill: 'var(--t-s)' }} /><ChartComponents.YAxis tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--t-s)' }} />
-                <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Area type="monotone" dataKey="y" stroke="var(--p)" fill="var(--p)" fillOpacity={0.2} />
+                <ChartComponents.Tooltip formatter={fmtVal} /><ChartComponents.Area type="monotone" dataKey="y" stroke="var(--p)" fill="var(--p)" fillOpacity={0.2} onClick={(e: any) => handlePointClick(e)} />
               </ChartComponents.AreaChart>
             ) : selChart === 'scatter' ? (
               <ChartComponents.ScatterChart>
